@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/waikw/AppData/Local/Temp/claude/e--Project-PathwayAI/448ecbc6-1759-43c7-a464-4091e28180a2/tasks/**)"
+    ]
+  }
+}

@@ -190,11 +190,26 @@ model Institution {
   logoUrl         String?
   createdAt       DateTime @default(now())
 
-  users           User[]
-  programmes      Programme[]
-  graduateOutcomes GraduateOutcome[]
-  issuedCredentials IssuedCredential[]
+  users                 User[]
+  programmes            Programme[]
+  graduateOutcomes      GraduateOutcome[]
+  issuedCredentials     IssuedCredential[]
   employerRelationships EmployerRelationship[]
+  snapshots             InstitutionSnapshot[]
+  insights              InstitutionInsight[]
+  careerStages          AlumniCareerStage[]
+  salaryStages          AlumniSalaryStage[]
+  engagements           AlumniEngagement[]
+  sectorTrends          MarketSectorTrend[]
+  districtSalaries      DistrictSalaryBenchmark[]
+  skillShortages        SkillShortage[]
+  competencyFeedbacks   CompetencyFeedback[]
+  demandForecasts       DemandForecast[]
+  pipeline              PartnershipPipeline[]
+  satisfactionTrends    EmployerSatisfactionTrend[]
+  employerEvents        EmployerEvent[]
+  partnerActivities     PartnershipActivity[]
+  alumniEvents          AlumniEvent[]
 }
 
 model Programme {
@@ -212,6 +227,7 @@ model Programme {
 
   institution   Institution @relation(fields: [institutionId], references: [id])
   outcomes      GraduateOutcome[]
+  snapshots     ProgrammeSnapshot[]
 }
 
 model GraduateOutcome {
@@ -324,4 +340,234 @@ model AlumniPath {
   description       String?
   sector            String?
   createdAt         DateTime @default(now())
+}
+
+model InstitutionSnapshot {
+  id                String   @id @default(cuid())
+  institutionId     String
+  year              Int
+  employmentRate    Float
+  medianSalary      Float
+  timeToOfferDays   Float
+  employedCount     Int      @default(0)
+  furtherStudyCount Int      @default(0)
+  seekingCount      Int      @default(0)
+  otherCount        Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  institution       Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, year])
+}
+
+model ProgrammeSnapshot {
+  id             String   @id @default(cuid())
+  programmeId    String
+  year           Int
+  employmentRate Float
+  medianSalary   Float
+  createdAt      DateTime @default(now())
+
+  programme      Programme @relation(fields: [programmeId], references: [id])
+
+  @@unique([programmeId, year])
+}
+
+model InstitutionInsight {
+  id            String   @id @default(cuid())
+  institutionId String
+  type          String   // "success", "alert", "info", "warning"
+  title         String
+  description   String
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+}
+
+model AlumniCareerStage {
+  id            String   @id @default(cuid())
+  institutionId String
+  yearsRange    String
+  sector        String
+  count         Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, yearsRange, sector])
+}
+
+model AlumniSalaryStage {
+  id            String   @id @default(cuid())
+  institutionId String
+  yearsRange    String
+  medianSalary  Float
+  q1Salary      Float
+  q3Salary      Float
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, yearsRange])
+}
+
+model AlumniEngagement {
+  id                    String   @id @default(cuid())
+  institutionId         String
+  year                  Int
+  month                 String
+  mentorshipConnections Int      @default(0)
+  eventsAttended        Int      @default(0)
+  jobPostings           Int      @default(0)
+  createdAt             DateTime @default(now())
+
+  institution           Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, year, month])
+}
+
+model MarketSectorTrend {
+  id            String   @id @default(cuid())
+  institutionId String
+  quarter       String
+  sector        String
+  demandIndex   Int
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, quarter, sector])
+}
+
+model DistrictSalaryBenchmark {
+  id            String   @id @default(cuid())
+  institutionId String
+  district      String
+  median        Int
+  q1Salary      Int
+  q3Salary      Int
+  jobCount      Int      @default(0)
+  year          Int
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, district, year])
+}
+
+model SkillShortage {
+  id            String   @id @default(cuid())
+  institutionId String
+  skill         String
+  shortage      Int
+  demandGrowth  Int
+  salaryPremium Int
+  supply        Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, skill])
+}
+
+model CompetencyFeedback {
+  id            String   @id @default(cuid())
+  institutionId String
+  competency    String
+  current       Int
+  desired       Int
+  year          Int
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, competency, year])
+}
+
+model DemandForecast {
+  id            String   @id @default(cuid())
+  institutionId String
+  month         String
+  monthOrder    Int
+  year          Int
+  actual        Int?
+  forecast      Int
+  historical    Int
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, year, month])
+}
+
+model PartnershipPipeline {
+  id             String   @id @default(cuid())
+  institutionId  String
+  stage          String
+  count          Int
+  conversionRate Int
+  sortOrder      Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  institution    Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, stage])
+}
+
+model EmployerSatisfactionTrend {
+  id            String   @id @default(cuid())
+  institutionId String
+  quarter       String
+  quarterOrder  Int      @default(0)
+  overall       Float
+  graduates     Float
+  support       Float
+  processes     Float
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, quarter])
+}
+
+model EmployerEvent {
+  id            String   @id @default(cuid())
+  institutionId String
+  month         String
+  monthOrder    Int
+  year          Int
+  careerFairs   Int      @default(0)
+  workshops     Int      @default(0)
+  networking    Int      @default(0)
+  attendance    Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([institutionId, year, month])
+}
+
+model PartnershipActivity {
+  id            String   @id @default(cuid())
+  institutionId String
+  type          String
+  employer      String
+  action        String
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+}
+
+model AlumniEvent {
+  id              String   @id @default(cuid())
+  institutionId   String
+  title           String
+  date            DateTime
+  time            String
+  host            String
+  mode            String
+  relevantPathIds String[]
+  createdAt       DateTime @default(now())
+
+  institution     Institution @relation(fields: [institutionId], references: [id])
 }

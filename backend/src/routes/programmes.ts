@@ -36,4 +36,12 @@ export default async function programmeRoutes(app: FastifyInstance) {
   app.get('/alumni-paths', { preHandler: [app.authenticate] }, async () => {
     return prisma.alumniPath.findMany({ orderBy: { name: 'asc' } });
   });
+
+  // GET /api/v1/programmes/alumni-events — upcoming alumni events
+  app.get('/alumni-events', { preHandler: [app.authenticate] }, async () => {
+    return prisma.alumniEvent.findMany({
+      orderBy: { date: 'asc' },
+      where: { date: { gte: new Date() } },
+    });
+  });
 }

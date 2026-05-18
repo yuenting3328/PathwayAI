@@ -6,21 +6,37 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { signalsByTab, type MarketSignalCard } from '../data/marketSignalData';
+import { market, type MarketSignal } from '../lib/api';
 
-// ─── Icon map (for rendering cards) ─────────────────────────────────────────
+// ─── Icon map ────────────────────────────────────────────────────────────────
+type AccentVariant = 'rose' | 'emerald' | 'purple' | 'sky' | 'indigo' | 'amber';
+type IconName = 'Zap' | 'TrendingUp' | 'Sparkles' | 'Star' | 'Target' | 'Flame' | 'Building2';
 
-const iconMap: Record<MarketSignalCard['iconName'], React.ElementType> = {
+const iconMap: Record<IconName, React.ElementType> = {
   Zap, TrendingUp, Sparkles, Star, Target, Flame, Building2,
 };
 
-// ─── Accent helpers ───────────────────────────────────────────────────────────
-
-function accentText(v: MarketSignalCard['accentVariant']) {
-  return { rose: 'text-rose-400', emerald: 'text-emerald-400', purple: 'text-purple-400', sky: 'text-sky-400', indigo: 'text-indigo-400', amber: 'text-amber-400' }[v] ?? 'text-indigo-400';
+// ─── Derive display properties from API MarketSignal ─────────────────────────
+function signalAccent(trend: string): AccentVariant {
+  return ({ HOT: 'rose', UP: 'emerald', DOWN: 'sky', STABLE: 'indigo' } as Record<string, AccentVariant>)[trend] ?? 'indigo';
+}
+function signalIcon(trend: string): IconName {
+  return ({ HOT: 'Flame', UP: 'TrendingUp', DOWN: 'Target', STABLE: 'Star' } as Record<string, IconName>)[trend] ?? 'Zap';
+}
+function signalBadge(trend: string): string {
+  return { HOT: '🔥 Hot', UP: '📈 Growing', DOWN: '📉 Declining', STABLE: '📊 Stable' }[trend] ?? '📊 Stable';
+}
+function signalMetric(s: MarketSignal): string {
+  if (s.salaryMin && s.salaryMax) return `HK$${Math.round(s.salaryMin / 1000)}K–${Math.round(s.salaryMax / 1000)}K`;
+  if (s.salaryMin) return `From HK$${Math.round(s.salaryMin / 1000)}K`;
+  return s.role ?? s.sector ?? s.district ?? '';
 }
 
-function cardGradient(v: MarketSignalCard['accentVariant']) {
+// ─── Accent helpers ───────────────────────────────────────────────────────────
+function accentText(v: AccentVariant) {
+  return { rose: 'text-rose-400', emerald: 'text-emerald-400', purple: 'text-purple-400', sky: 'text-sky-400', indigo: 'text-indigo-400', amber: 'text-amber-400' }[v];
+}
+function cardGradient(v: AccentVariant) {
   return {
     rose:    'from-rose-600/18 via-pink-600/8 to-slate-900/50 border-rose-500/25',
     emerald: 'from-emerald-600/18 via-green-600/8 to-slate-900/50 border-emerald-500/25',
@@ -28,19 +44,15 @@ function cardGradient(v: MarketSignalCard['accentVariant']) {
     sky:     'from-sky-600/18 via-blue-600/8 to-slate-900/50 border-sky-500/25',
     indigo:  'from-indigo-600/18 via-blue-600/8 to-slate-900/50 border-indigo-500/25',
     amber:   'from-amber-600/18 via-orange-600/8 to-slate-900/50 border-amber-500/25',
-  }[v] ?? 'from-indigo-600/18 via-blue-600/8 to-slate-900/50 border-indigo-500/25';
+  }[v];
 }
-
-function badgeClasses(v: MarketSignalCard['badgeVariant']) {
+function badgeClasses(trend: string) {
   return {
-    'hot':         'bg-rose-500/25 text-rose-300 border border-rose-500/30',
-    'growing':     'bg-emerald-500/25 text-emerald-300 border border-emerald-500/30',
-    'emerging':    'bg-purple-500/25 text-purple-300 border border-purple-500/30',
-    'stable':      'bg-sky-500/25 text-sky-300 border border-sky-500/30',
-    'rising':      'bg-amber-500/25 text-amber-300 border border-amber-500/30',
-    'balanced':    'bg-emerald-500/25 text-emerald-300 border border-emerald-500/30',
-    'high-demand': 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/30',
-  }[v] ?? 'bg-slate-500/25 text-slate-300 border border-slate-500/30';
+    HOT:    'bg-rose-500/25 text-rose-300 border border-rose-500/30',
+    UP:     'bg-emerald-500/25 text-emerald-300 border border-emerald-500/30',
+    DOWN:   'bg-sky-500/25 text-sky-300 border border-sky-500/30',
+    STABLE: 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/30',
+  }[trend] ?? 'bg-slate-500/25 text-slate-300 border border-slate-500/30';
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -62,10 +74,15 @@ export default function MarketRadarScreen() {
   const [selectedDistrict, setSelectedDistrict] = useState('Central & Western');
   const [minSalary, setMinSalary] = useState(30);
   const [showScenarioSheet, setShowScenarioSheet] = useState(false);
+  const [signals, setSignals] = useState<MarketSignal[]>([]);
 
-  const roleOptions = ['Data Analyst', 'Software Developer', 'Business Analyst', 'Product Manager', 'Cybersecurity Analyst', 'Financial Analyst'];
-  const sectorOptions = ['Financial Services', 'Technology', 'Consulting', 'E-commerce', 'Healthcare', 'Government'];
-  const districtOptions = ['Central & Western', 'Wan Chai', 'Kowloon East', 'Tsim Sha Tsui', 'Quarry Bay', 'New Territories'];
+  useEffect(() => {
+    market.signals().then(setSignals).catch(console.error);
+  }, []);
+
+  const roleOptions = [...new Set(signals.map(s => s.role).filter(Boolean))] as string[];
+  const sectorOptions = [...new Set(signals.map(s => s.sector).filter(Boolean))] as string[];
+  const districtOptions = [...new Set(signals.map(s => s.district).filter(Boolean))] as string[];
 
   const calculateScenario = () => {
     const baseOpenings = 142;
@@ -111,7 +128,11 @@ export default function MarketRadarScreen() {
     }
   }, [navState?.scrollToScenario]);
 
-  const currentCards = signalsByTab[signalTab];
+  const currentCards = signals.filter(s =>
+    signalTab === 'district' ? !!s.district :
+    signalTab === 'role'     ? !!s.role :
+    !!s.sector
+  );
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -162,32 +183,36 @@ export default function MarketRadarScreen() {
 
           {/* Horizontally scrollable cards */}
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-6 px-6">
-            {currentCards.map((card) => {
-              const Icon = iconMap[card.iconName];
+            {currentCards.length === 0 && (
+              <p className="text-slate-400 text-sm py-4">{t('No signals available', '暫無市場訊號')}</p>
+            )}
+            {currentCards.map((signal) => {
+              const accent = signalAccent(signal.trend);
+              const Icon = iconMap[signalIcon(signal.trend)];
               return (
                 <motion.button
-                  key={card.id}
+                  key={signal.id}
                   whileHover={{ scale: 1.03, y: -3 }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => navigate(`/market-radar/signal/${card.id}`)}
-                  className={`flex-shrink-0 w-52 text-left bg-gradient-to-br ${cardGradient(card.accentVariant)} backdrop-blur-sm rounded-2xl p-4 border shadow-lg transition-all hover:shadow-xl`}
+                  onClick={() => navigate(`/market-radar/signal/${signal.id}`)}
+                  className={`flex-shrink-0 w-52 text-left bg-gradient-to-br ${cardGradient(accent)} backdrop-blur-sm rounded-2xl p-4 border shadow-lg transition-all hover:shadow-xl`}
                 >
                   {/* Badge */}
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold mb-3 ${badgeClasses(card.badgeVariant)}`}>
-                    {card.badge}
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold mb-3 ${badgeClasses(signal.trend)}`}>
+                    {signalBadge(signal.trend)}
                   </span>
 
                   {/* Icon + title */}
                   <div className="flex items-start gap-2 mb-2.5">
                     <div className="w-8 h-8 bg-slate-900/50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Icon className={`w-4 h-4 ${accentText(card.accentVariant)}`} />
+                      <Icon className={`w-4 h-4 ${accentText(accent)}`} />
                     </div>
-                    <p className="text-white font-semibold text-xs leading-snug">{card.title}</p>
+                    <p className="text-white font-semibold text-xs leading-snug">{signal.title}</p>
                   </div>
 
                   {/* Metric */}
-                  <p className={`font-bold text-sm mb-1 ${accentText(card.accentVariant)}`}>{card.metric}</p>
-                  <p className="text-slate-400 text-xs leading-relaxed line-clamp-2">{card.description}</p>
+                  <p className={`font-bold text-sm mb-1 ${accentText(accent)}`}>{signalMetric(signal)}</p>
+                  <p className="text-slate-400 text-xs leading-relaxed line-clamp-2">{signal.description}</p>
 
                   {/* Tap hint */}
                   <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-white/5">

@@ -1,73 +1,122 @@
-import { Users, TrendingUp, MessageSquare, Award, Briefcase, Building2, MapPin, DollarSign } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Sankey } from 'recharts';
+import { Users, TrendingUp, MessageSquare, Award, Building2, MapPin } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect } from 'react';
+import { analytics, employers, institution, type InstitutionAnalytics, type EmployerRelationship, type IssuedCredential, type GraduateOutcome, type AlumniCareerStage, type AlumniSalaryStage, type AlumniEngagement, type CoachingWeekMetric } from '../lib/api';
 
 export default function Alumni() {
+  const [analyticsData, setAnalyticsData] = useState<InstitutionAnalytics | null>(null);
+  const [partnerships, setPartnerships] = useState<EmployerRelationship[]>([]);
+  const [credentials, setCredentials] = useState<IssuedCredential[]>([]);
+  const [outcomes, setOutcomes] = useState<GraduateOutcome[]>([]);
+  const [careerStages, setCareerStages] = useState<AlumniCareerStage[]>([]);
+  const [salaryStages, setSalaryStages] = useState<AlumniSalaryStage[]>([]);
+  const [engagements, setEngagements] = useState<AlumniEngagement[]>([]);
+  const [fetchedCoachingMetrics, setFetchedCoachingMetrics] = useState<CoachingWeekMetric[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      analytics.institution(),
+      employers.partnerships(),
+      institution.credentials(),
+      institution.outcomes(),
+      institution.careerStages(),
+      institution.salaryStages(),
+      institution.engagement(),
+      institution.coachingMetrics(),
+    ]).then(([a, p, c, o, cs, ss, eng, cm]) => {
+      setAnalyticsData(a);
+      setPartnerships(p);
+      setCredentials(c);
+      setOutcomes(o);
+      setCareerStages(cs);
+      setSalaryStages(ss);
+      setEngagements(eng);
+      setFetchedCoachingMetrics(cm);
+    }).catch(console.error);
+  }, []);
+
   // Hero KPIs
   const heroKPIs = [
-    { label: 'Active Alumni Network', value: '18,247', change: '+1,289 this year', icon: Users, color: '#6366F1' },
+    { label: 'Active Alumni Network', value: analyticsData ? analyticsData.alumniCount.toLocaleString() : '—', change: 'Total graduates on platform', icon: Users, color: '#6366F1' },
     { label: 'Career Trajectory Data', value: '84.3%', change: 'Coverage rate', icon: TrendingUp, color: '#34D399' },
-    { label: 'AI Coaching Sessions', value: '3,458', change: '+487 this month', icon: MessageSquare, color: '#0EA5E9' },
-    { label: 'Digital Badges Issued', value: '2,847', change: 'Across 47 programmes', icon: Award, color: '#FBBF24' },
+    { label: 'AI Coaching Sessions', value: analyticsData ? analyticsData.coachingSessionCount.toLocaleString() : '—', change: 'Total sessions completed', icon: MessageSquare, color: '#0EA5E9' },
+    { label: 'Digital Badges Issued', value: analyticsData ? analyticsData.credentialsIssued.toLocaleString() : '—', change: 'Across all programmes', icon: Award, color: '#FBBF24' },
   ];
 
-  // Career trajectory (Sankey-style data)
-  const careerProgression = [
-    { years: '0-2 years', finance: 287, tech: 342, professional: 198, other: 156 },
-    { years: '3-5 years', finance: 312, tech: 398, professional: 234, other: 142 },
-    { years: '6-10 years', finance: 276, tech: 421, professional: 267, other: 128 },
-    { years: '10+ years', finance: 234, tech: 389, professional: 298, other: 98 },
-  ];
+  // Career trajectory grouped by yearsRange → sector columns
+  const careerProgression = (() => {
+    const grouped: Record<string, Record<string, number>> = {};
+    careerStages.forEach((s: AlumniCareerStage) => {
+      if (!grouped[s.yearsRange]) grouped[s.yearsRange] = {};
+      const key = s.sector === 'Technology' ? 'tech'
+        : s.sector === 'Professional Services' ? 'professional'
+        : s.sector.toLowerCase();
+      grouped[s.yearsRange][key] = s.count;
+    });
+    return Object.entries(grouped).map(([years, sectors]) => ({ years, ...sectors }));
+  })();
 
-  // Salary progression
-  const salaryProgression = [
-    { years: '0-2', median: 18500, q1: 15000, q3: 24000 },
-    { years: '3-5', median: 28500, q1: 22000, q3: 38000 },
-    { years: '6-10', median: 42000, q1: 32000, q3: 58000 },
-    { years: '10+', median: 62000, q1: 45000, q3: 85000 },
-  ];
+  // Salary progression from DB
+  const salaryProgression = salaryStages.map((s: AlumniSalaryStage) => ({
+    years: s.yearsRange,
+    median: s.medianSalary,
+    q1: s.q1Salary,
+    q3: s.q3Salary,
+  }));
 
-  // AI coaching metrics
-  const coachingMetrics = [
-    { week: 'Week 1', sessions: 387, satisfaction: 8.4, actionsTaken: 312 },
-    { week: 'Week 2', sessions: 412, satisfaction: 8.6, actionsTaken: 334 },
-    { week: 'Week 3', sessions: 445, satisfaction: 8.7, actionsTaken: 367 },
-    { week: 'Week 4', sessions: 487, satisfaction: 8.9, actionsTaken: 398 },
-  ];
+  // AI coaching metrics from DB
+  const coachingMetrics = fetchedCoachingMetrics;
+  const avgSatisfaction = coachingMetrics.length
+    ? (coachingMetrics.reduce((sum: number, m: CoachingWeekMetric) => sum + m.satisfaction, 0) / coachingMetrics.length).toFixed(1)
+    : '—';
 
-  // Top employers (alumni)
-  const topAlumniEmployers = [
-    { employer: 'HSBC', alumni: 1247, sectors: ['Finance', 'Technology'], avgTenure: '4.2 years' },
-    { employer: 'Government of HKSAR', alumni: 987, sectors: ['Public Administration', 'Education'], avgTenure: '6.8 years' },
-    { employer: 'Alibaba Group', alumni: 856, sectors: ['Technology', 'E-commerce'], avgTenure: '3.1 years' },
-    { employer: 'Hospital Authority', alumni: 743, sectors: ['Healthcare', 'Research'], avgTenure: '5.4 years' },
-    { employer: 'Deloitte', alumni: 682, sectors: ['Professional Services', 'Consulting'], avgTenure: '3.8 years' },
-  ];
+  // Top employers from partnerships
+  const topAlumniEmployers = [...partnerships]
+    .sort((a: EmployerRelationship, b: EmployerRelationship) => b.placements - a.placements)
+    .slice(0, 5)
+    .map((p: EmployerRelationship) => ({
+      employer: p.employer.name,
+      placements: p.placements,
+      sector: p.employer.sector ?? 'N/A',
+      tier: p.tier,
+    }));
 
-  // Geographic distribution
-  const geographicData = [
-    { location: 'Hong Kong', count: 14287, percentage: 78 },
-    { location: 'Mainland China', count: 2189, percentage: 12 },
-    { location: 'Singapore', count: 876, percentage: 5 },
-    { location: 'UK', count: 547, percentage: 3 },
-    { location: 'Others', count: 348, percentage: 2 },
-  ];
+  // Geographic distribution from outcomes
+  const geographicData = (() => {
+    const counts: Record<string, number> = {};
+    outcomes.forEach(o => {
+      const geo = o.geography ?? 'Unknown';
+      counts[geo] = (counts[geo] ?? 0) + 1;
+    });
+    const total = outcomes.length || 1;
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([location, count]) => ({
+        location,
+        count,
+        percentage: +((count / total) * 100).toFixed(1),
+      }));
+  })();
 
-  // Alumni network engagement
-  const engagementData = [
-    { month: 'Jan', mentorship: 187, events: 12, jobPostings: 43 },
-    { month: 'Feb', mentorship: 203, events: 15, jobPostings: 38 },
-    { month: 'Mar', mentorship: 234, events: 18, jobPostings: 52 },
-    { month: 'Apr', mentorship: 267, events: 14, jobPostings: 47 },
-    { month: 'May', mentorship: 289, events: 21, jobPostings: 61 },
-    { month: 'Jun', mentorship: 312, events: 19, jobPostings: 58 },
-  ];
+  // Alumni network engagement from DB
+  const engagementData = engagements.map((e: AlumniEngagement) => ({
+    month: e.month,
+    mentorship: e.mentorshipConnections,
+    events: e.eventsAttended,
+    jobPostings: e.jobPostings,
+  }));
 
-  // Digital credentials (alumni)
-  const credentialActivity = [
-    { type: 'HEAR Credentials', issued: 4247, shared: 2908, verified: 2456 },
-    { type: 'Digital Badges', issued: 2847, shared: 1987, verified: 1678 },
-    { type: 'Certificates', issued: 1543, shared: 1089, verified: 934 },
-  ];
+  // Digital credentials from API grouped by name
+  const credentialActivity = (() => {
+    const groups: Record<string, { issued: number; verified: number }> = {};
+    credentials.forEach(c => {
+      const key = c.name || c.type;
+      if (!groups[key]) groups[key] = { issued: 0, verified: 0 };
+      groups[key].issued += 1;
+      if (c.status === 'VERIFIED') groups[key].verified += 1;
+    });
+    return Object.entries(groups).map(([type, stats]) => ({ type, ...stats }));
+  })();
 
   return (
     <div className="space-y-6">
@@ -163,15 +212,21 @@ export default function Alumni() {
             <div className="mt-4 grid grid-cols-3 gap-4 text-center text-[12px]">
               <div>
                 <div className="text-muted-foreground">Entry Level</div>
-                <div className="text-[16px] font-semibold text-foreground mt-1">$18.5K</div>
+                <div className="text-[16px] font-semibold text-foreground mt-1">
+                  {salaryStages[0] ? `$${(salaryStages[0].medianSalary / 1000).toFixed(1)}K` : '—'}
+                </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Mid-Career</div>
-                <div className="text-[16px] font-semibold text-foreground mt-1">$42K</div>
+                <div className="text-[16px] font-semibold text-foreground mt-1">
+                  {salaryStages[2] ? `$${(salaryStages[2].medianSalary / 1000).toFixed(0)}K` : '—'}
+                </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Senior</div>
-                <div className="text-[16px] font-semibold text-foreground mt-1">$62K</div>
+                <div className="text-[16px] font-semibold text-foreground mt-1">
+                  {salaryStages[3] ? `$${(salaryStages[3].medianSalary / 1000).toFixed(0)}K` : '—'}
+                </div>
               </div>
             </div>
           </div>
@@ -182,7 +237,7 @@ export default function Alumni() {
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
           <h3 className="text-[18px] font-semibold text-foreground">AI Career Coaching Performance</h3>
-          <p className="text-[13px] text-muted-foreground mt-1">Session volume, satisfaction scores, and action completion rates</p>
+          <p className="text-[13px] text-muted-foreground mt-1">Session volume and satisfaction scores over the last 4 weeks</p>
         </div>
         <div className="p-6">
           <ResponsiveContainer width="100%" height={280}>
@@ -201,22 +256,17 @@ export default function Alumni() {
                 }}
               />
               <Line key="sessions" yAxisId="left" type="monotone" dataKey="sessions" stroke="#6366F1" strokeWidth={2.5} name="Sessions" />
-              <Line key="actionsTaken" yAxisId="left" type="monotone" dataKey="actionsTaken" stroke="#34D399" strokeWidth={2.5} name="Actions Taken" />
               <Line key="satisfaction" yAxisId="right" type="monotone" dataKey="satisfaction" stroke="#FBBF24" strokeWidth={2.5} name="Satisfaction" />
             </LineChart>
           </ResponsiveContainer>
-          <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t border-border">
+          <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-border">
             <div className="text-center">
               <div className="text-[13px] text-muted-foreground">Total Sessions</div>
-              <div className="text-[20px] font-semibold text-[#6366F1] mt-1">3,458</div>
+              <div className="text-[20px] font-semibold text-[#6366F1] mt-1">{analyticsData ? analyticsData.coachingSessionCount.toLocaleString() : '—'}</div>
             </div>
             <div className="text-center">
               <div className="text-[13px] text-muted-foreground">Avg Satisfaction</div>
-              <div className="text-[20px] font-semibold text-[#FBBF24] mt-1">8.7/10</div>
-            </div>
-            <div className="text-center">
-              <div className="text-[13px] text-muted-foreground">Action Rate</div>
-              <div className="text-[20px] font-semibold text-[#34D399] mt-1">82.3%</div>
+              <div className="text-[20px] font-semibold text-[#FBBF24] mt-1">{avgSatisfaction}/10</div>
             </div>
           </div>
         </div>
@@ -239,12 +289,12 @@ export default function Alumni() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-[14px] font-medium text-foreground">{employer.employer}</div>
-                      <div className="text-[16px] font-semibold text-[#6366F1]">{employer.alumni}</div>
+                      <div className="text-[16px] font-semibold text-[#6366F1]">{employer.placements} placements</div>
                     </div>
                     <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                      <span>{employer.sectors.join(' • ')}</span>
+                      <span>{employer.sector}</span>
                     </div>
-                    <div className="text-[12px] text-muted-foreground mt-1">Avg tenure: {employer.avgTenure}</div>
+                    <div className="text-[12px] text-muted-foreground mt-1">Tier: {employer.tier}</div>
                   </div>
                 </div>
               ))}
@@ -325,9 +375,8 @@ export default function Alumni() {
               <tr>
                 <th className="px-6 py-3 text-left text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Credential Type</th>
                 <th className="px-6 py-3 text-right text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Issued</th>
-                <th className="px-6 py-3 text-right text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Shared</th>
                 <th className="px-6 py-3 text-right text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Verified</th>
-                <th className="px-6 py-3 text-center text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Share Rate</th>
+                <th className="px-6 py-3 text-center text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Verify Rate</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -335,18 +384,17 @@ export default function Alumni() {
                 <tr key={cred.type} className="hover:bg-accent transition-colors">
                   <td className="px-6 py-4 text-[14px] text-foreground font-medium">{cred.type}</td>
                   <td className="px-6 py-4 text-right text-[14px] font-mono text-foreground">{cred.issued.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right text-[14px] font-mono text-foreground">{cred.shared.toLocaleString()}</td>
                   <td className="px-6 py-4 text-right text-[14px] font-mono text-foreground">{cred.verified.toLocaleString()}</td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-2 rounded-full bg-[#34D399]"
-                          style={{ width: `${(cred.shared / cred.issued) * 100}%` }}
+                          style={{ width: `${cred.issued > 0 ? (cred.verified / cred.issued) * 100 : 0}%` }}
                         />
                       </div>
                       <span className="text-[13px] font-semibold text-[#34D399]">
-                        {Math.round((cred.shared / cred.issued) * 100)}%
+                        {cred.issued > 0 ? Math.round((cred.verified / cred.issued) * 100) : 0}%
                       </span>
                     </div>
                   </td>

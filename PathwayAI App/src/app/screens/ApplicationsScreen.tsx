@@ -142,6 +142,7 @@ export default function ApplicationsScreen() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   whileHover={{ scale: 1.01, x: 4 }}
+                  onClick={() => navigate(`/applications/${app.id}`)}
                   className={`bg-gradient-to-r ${config.color} backdrop-blur-sm rounded-2xl p-5 border shadow-lg cursor-pointer`}
                 >
                   <div className="flex items-start gap-4">

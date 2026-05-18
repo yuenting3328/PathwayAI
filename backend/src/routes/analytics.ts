@@ -6,37 +6,51 @@ export default async function analyticsRoutes(app: FastifyInstance) {
   app.get('/me', { preHandler: [app.authenticate] }, async (request) => {
     const { sub } = request.user as { sub: string };
 
-    const [applications, coachSessions, skills] = await Promise.all([
+    const sixWeeksAgo = new Date(Date.now() - 42 * 24 * 60 * 60 * 1000);
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+
+    const [allApplications, recentApplications, coachSessions, skills] = await Promise.all([
       prisma.application.findMany({ where: { userId: sub } }),
+      prisma.application.findMany({
+        where: { userId: sub, appliedDate: { gte: sixWeeksAgo } },
+        select: { appliedDate: true, status: true },
+      }),
       prisma.coachSession.findMany({ where: { userId: sub } }),
       prisma.userSkill.findMany({ where: { userId: sub } }),
     ]);
 
-    const interviews = applications.filter((a) => a.status === 'INTERVIEW' || a.status === 'OFFERED');
-    const conversionRate = applications.length
-      ? Math.round((interviews.length / applications.length) * 100 * 10) / 10
+    const interviews = allApplications.filter((a) => a.status === 'INTERVIEW' || a.status === 'OFFERED');
+    const conversionRate = allApplications.length
+      ? Math.round((interviews.length / allApplications.length) * 100 * 10) / 10
       : 0;
 
-    // Weekly match score trend from last 6 weeks (approximated from skill levels)
     const avgSkillLevel = skills.length
       ? Math.round(skills.reduce((acc, s) => acc + s.level, 0) / skills.length)
       : 0;
 
+    // Weekly interview conversion rate over last 6 weeks; falls back to avgSkillLevel when no data
+    const now = Date.now();
+    const matchScoreTrend = Array.from({ length: 6 }, (_, i) => {
+      const weekStart = new Date(now - (6 - i) * weekMs);
+      const weekEnd = new Date(now - (5 - i) * weekMs);
+      const weekApps = recentApplications.filter(
+        (a) => a.appliedDate >= weekStart && a.appliedDate < weekEnd,
+      );
+      if (weekApps.length === 0) return avgSkillLevel;
+      const weekInterviews = weekApps.filter((a) =>
+        ['INTERVIEW', 'OFFERED'].includes(a.status),
+      );
+      return Math.round((weekInterviews.length / weekApps.length) * 100);
+    });
+
     return {
-      applications: applications.length,
+      applications: allApplications.length,
       interviews: interviews.length,
-      offers: applications.filter((a) => a.status === 'OFFERED').length,
+      offers: allApplications.filter((a) => a.status === 'OFFERED').length,
       conversionRate,
       coachSessions: coachSessions.length,
       avgSkillLevel,
-      matchScoreTrend: [
-        Math.max(0, avgSkillLevel - 17),
-        Math.max(0, avgSkillLevel - 14),
-        Math.max(0, avgSkillLevel - 10),
-        Math.max(0, avgSkillLevel - 7),
-        Math.max(0, avgSkillLevel - 4),
-        avgSkillLevel,
-      ],
+      matchScoreTrend,
     };
   });
 
@@ -50,13 +64,15 @@ export default async function analyticsRoutes(app: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { id: sub } });
     if (!user?.institutionId) return reply.status(400).send({ error: 'No institution linked' });
 
-    const [outcomes, credentials, employers] = await Promise.all([
+    const [outcomes, credentials, employers, alumniCount, coachingSessionCount] = await Promise.all([
       prisma.graduateOutcome.findMany({ where: { institutionId: user.institutionId } }),
       prisma.issuedCredential.findMany({ where: { institutionId: user.institutionId } }),
       prisma.employerRelationship.findMany({
         where: { institutionId: user.institutionId },
         include: { employer: true },
       }),
+      prisma.user.count({ where: { institutionId: user.institutionId, role: 'GRADUATE' } }),
+      prisma.coachSession.count({ where: { user: { institutionId: user.institutionId } } }),
     ]);
 
     const employed = outcomes.filter((o) => o.company);
@@ -76,6 +92,8 @@ export default async function analyticsRoutes(app: FastifyInstance) {
       totalJobPostings: employers.reduce((acc, e) => acc + e.jobPostings, 0),
       totalPlacements: employers.reduce((acc, e) => acc + e.placements, 0),
       sectorBreakdown,
+      alumniCount,
+      coachingSessionCount,
     };
   });
 

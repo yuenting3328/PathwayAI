@@ -475,6 +475,323 @@ async function main() {
     });
   }
 
+  // ── Institution snapshots (5-year employment trends) ─────────────────────
+  const snapshotsData = [
+    { id: 'snap-2022', year: 2022, employmentRate: 82.1, medianSalary: 16500, timeToOfferDays: 52, employedCount: 1245, furtherStudyCount: 187, seekingCount: 134, otherCount: 45 },
+    { id: 'snap-2023', year: 2023, employmentRate: 84.3, medianSalary: 17200, timeToOfferDays: 49, employedCount: 1387, furtherStudyCount: 203, seekingCount: 98, otherCount: 38 },
+    { id: 'snap-2024', year: 2024, employmentRate: 85.8, medianSalary: 17800, timeToOfferDays: 47, employedCount: 1456, furtherStudyCount: 218, seekingCount: 76, otherCount: 32 },
+    { id: 'snap-2025', year: 2025, employmentRate: 86.9, medianSalary: 18200, timeToOfferDays: 46, employedCount: 1500, furtherStudyCount: 225, seekingCount: 68, otherCount: 28 },
+    { id: 'snap-2026', year: 2026, employmentRate: 87.5, medianSalary: 18500, timeToOfferDays: 45, employedCount: 1550, furtherStudyCount: 230, seekingCount: 60, otherCount: 25 },
+  ];
+  for (const s of snapshotsData) {
+    await prisma.institutionSnapshot.upsert({
+      where: { institutionId_year: { institutionId: cuhk.id, year: s.year } },
+      create: { ...s, id: s.id, institutionId: cuhk.id },
+      update: {},
+    });
+  }
+
+  // ── Programme snapshots (3-year trend per programme) ──────────────────────
+  const progSnapshotsData = [
+    { id: 'psnap-cs-2024',   programmeId: 'iprog-01', year: 2024, employmentRate: 89.2, medianSalary: 38000 },
+    { id: 'psnap-cs-2025',   programmeId: 'iprog-01', year: 2025, employmentRate: 91.5, medianSalary: 40000 },
+    { id: 'psnap-cs-2026',   programmeId: 'iprog-01', year: 2026, employmentRate: 92.8, medianSalary: 42000 },
+    { id: 'psnap-fin-2024',  programmeId: 'iprog-02', year: 2024, employmentRate: 91.5, medianSalary: 40000 },
+    { id: 'psnap-fin-2025',  programmeId: 'iprog-02', year: 2025, employmentRate: 93.1, medianSalary: 42000 },
+    { id: 'psnap-fin-2026',  programmeId: 'iprog-02', year: 2026, employmentRate: 94.2, medianSalary: 44000 },
+    { id: 'psnap-ds-2024',   programmeId: 'iprog-03', year: 2024, employmentRate: 88.3, medianSalary: 37000 },
+    { id: 'psnap-ds-2025',   programmeId: 'iprog-03', year: 2025, employmentRate: 90.1, medianSalary: 39500 },
+    { id: 'psnap-ds-2026',   programmeId: 'iprog-03', year: 2026, employmentRate: 91.5, medianSalary: 41500 },
+    { id: 'psnap-mkt-2024',  programmeId: 'iprog-04', year: 2024, employmentRate: 87.2, medianSalary: 33000 },
+    { id: 'psnap-mkt-2025',  programmeId: 'iprog-04', year: 2025, employmentRate: 88.9, medianSalary: 34500 },
+    { id: 'psnap-mkt-2026',  programmeId: 'iprog-04', year: 2026, employmentRate: 89.7, medianSalary: 36000 },
+    { id: 'psnap-com-2024',  programmeId: 'iprog-05', year: 2024, employmentRate: 82.1, medianSalary: 28000 },
+    { id: 'psnap-com-2025',  programmeId: 'iprog-05', year: 2025, employmentRate: 83.8, medianSalary: 30000 },
+    { id: 'psnap-com-2026',  programmeId: 'iprog-05', year: 2026, employmentRate: 85.3, medianSalary: 32000 },
+    { id: 'psnap-law-2024',  programmeId: 'iprog-06', year: 2024, employmentRate: 86.4, medianSalary: 35000 },
+    { id: 'psnap-law-2025',  programmeId: 'iprog-06', year: 2025, employmentRate: 87.8, medianSalary: 36500 },
+    { id: 'psnap-law-2026',  programmeId: 'iprog-06', year: 2026, employmentRate: 88.6, medianSalary: 38000 },
+    { id: 'psnap-ee-2024',   programmeId: 'iprog-07', year: 2024, employmentRate: 87.5, medianSalary: 36000 },
+    { id: 'psnap-ee-2025',   programmeId: 'iprog-07', year: 2025, employmentRate: 89.1, medianSalary: 38000 },
+    { id: 'psnap-ee-2026',   programmeId: 'iprog-07', year: 2026, employmentRate: 90.1, medianSalary: 40000 },
+    { id: 'psnap-ft-2024',   programmeId: 'iprog-08', year: 2024, employmentRate: 93.1, medianSalary: 47000 },
+    { id: 'psnap-ft-2025',   programmeId: 'iprog-08', year: 2025, employmentRate: 94.6, medianSalary: 50000 },
+    { id: 'psnap-ft-2026',   programmeId: 'iprog-08', year: 2026, employmentRate: 95.4, medianSalary: 52000 },
+  ];
+  for (const s of progSnapshotsData) {
+    await prisma.programmeSnapshot.upsert({
+      where: { programmeId_year: { programmeId: s.programmeId, year: s.year } },
+      create: s,
+      update: {},
+    });
+  }
+
+  // ── Institution insights and alerts ───────────────────────────────────────
+  const insightsData = [
+    { id: 'insight-01', type: 'success', title: 'MSc FinTech graduates saw a 10% salary increase vs last cohort', description: 'Median salary rose from HKD $50,000 to HKD $52,000 — strongest growth across all programmes', createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+    { id: 'insight-02', type: 'alert', title: 'Time-to-offer for Arts graduates rose by 6 days', description: 'BA Communication now at 114 days vs 108 days last year — recommend enhanced career support', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000) },
+    { id: 'insight-03', type: 'info', title: 'Finance sector hiring increased 15% this quarter', description: 'Strong demand for BBA Finance and MSc FinTech graduates from Goldman Sachs, JP Morgan, and HSBC', createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    { id: 'alert-01', type: 'warning', title: 'BA Communication employment rate below university average', description: '85.3% vs 87.5% university average — curriculum review recommended for communication programme', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+    { id: 'alert-02', type: 'warning', title: 'Small cohort risk: BEng Electronic Engineering (n=18)', description: 'Cohort size below threshold — data aggregated for privacy. Detailed analytics may be unreliable.', createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+  ];
+  for (const ins of insightsData) {
+    await prisma.institutionInsight.upsert({
+      where: { id: ins.id },
+      create: { ...ins, institutionId: cuhk.id },
+      update: {},
+    });
+  }
+
+  // ── Alumni career stages (progression by sector over years) ───────────────
+  const careerStagesData = [
+    { id: 'cs-01', yearsRange: '0-2 years', sector: 'Finance', count: 287 },
+    { id: 'cs-02', yearsRange: '0-2 years', sector: 'Technology', count: 342 },
+    { id: 'cs-03', yearsRange: '0-2 years', sector: 'Professional Services', count: 198 },
+    { id: 'cs-04', yearsRange: '0-2 years', sector: 'Other', count: 156 },
+    { id: 'cs-05', yearsRange: '3-5 years', sector: 'Finance', count: 312 },
+    { id: 'cs-06', yearsRange: '3-5 years', sector: 'Technology', count: 398 },
+    { id: 'cs-07', yearsRange: '3-5 years', sector: 'Professional Services', count: 234 },
+    { id: 'cs-08', yearsRange: '3-5 years', sector: 'Other', count: 142 },
+    { id: 'cs-09', yearsRange: '6-10 years', sector: 'Finance', count: 276 },
+    { id: 'cs-10', yearsRange: '6-10 years', sector: 'Technology', count: 421 },
+    { id: 'cs-11', yearsRange: '6-10 years', sector: 'Professional Services', count: 267 },
+    { id: 'cs-12', yearsRange: '6-10 years', sector: 'Other', count: 128 },
+    { id: 'cs-13', yearsRange: '10+ years', sector: 'Finance', count: 234 },
+    { id: 'cs-14', yearsRange: '10+ years', sector: 'Technology', count: 389 },
+    { id: 'cs-15', yearsRange: '10+ years', sector: 'Professional Services', count: 298 },
+    { id: 'cs-16', yearsRange: '10+ years', sector: 'Other', count: 98 },
+  ];
+  for (const cs of careerStagesData) {
+    await prisma.alumniCareerStage.upsert({
+      where: { institutionId_yearsRange_sector: { institutionId: cuhk.id, yearsRange: cs.yearsRange, sector: cs.sector } },
+      create: { ...cs, institutionId: cuhk.id },
+      update: { count: cs.count },
+    });
+  }
+
+  // ── Alumni salary stages ──────────────────────────────────────────────────
+  const salaryStagesData = [
+    { id: 'sal-01', yearsRange: '0-2', medianSalary: 18500, q1Salary: 15000, q3Salary: 24000 },
+    { id: 'sal-02', yearsRange: '3-5', medianSalary: 28500, q1Salary: 22000, q3Salary: 38000 },
+    { id: 'sal-03', yearsRange: '6-10', medianSalary: 42000, q1Salary: 32000, q3Salary: 58000 },
+    { id: 'sal-04', yearsRange: '10+', medianSalary: 62000, q1Salary: 45000, q3Salary: 85000 },
+  ];
+  for (const sal of salaryStagesData) {
+    await prisma.alumniSalaryStage.upsert({
+      where: { institutionId_yearsRange: { institutionId: cuhk.id, yearsRange: sal.yearsRange } },
+      create: { ...sal, institutionId: cuhk.id },
+      update: {},
+    });
+  }
+
+  // ── Alumni engagement (monthly) ───────────────────────────────────────────
+  const engagementData = [
+    { id: 'eng-01', month: 'Jan', mentorshipConnections: 187, eventsAttended: 12, jobPostings: 43 },
+    { id: 'eng-02', month: 'Feb', mentorshipConnections: 203, eventsAttended: 15, jobPostings: 38 },
+    { id: 'eng-03', month: 'Mar', mentorshipConnections: 234, eventsAttended: 18, jobPostings: 52 },
+    { id: 'eng-04', month: 'Apr', mentorshipConnections: 267, eventsAttended: 14, jobPostings: 47 },
+    { id: 'eng-05', month: 'May', mentorshipConnections: 289, eventsAttended: 21, jobPostings: 61 },
+    { id: 'eng-06', month: 'Jun', mentorshipConnections: 312, eventsAttended: 19, jobPostings: 58 },
+  ];
+  for (const eng of engagementData) {
+    await prisma.alumniEngagement.upsert({
+      where: { institutionId_year_month: { institutionId: cuhk.id, year: 2026, month: eng.month } },
+      create: { ...eng, institutionId: cuhk.id, year: 2026 },
+      update: {},
+    });
+  }
+
+  // ── Extra coaching sessions spread over 4 weeks (for coaching metrics) ────
+  const extraSessions = [
+    { id: 'coach-09',  score: 66, daysAgo: 25 }, { id: 'coach-10', score: 69, daysAgo: 23 },
+    { id: 'coach-11',  score: 71, daysAgo: 22 }, { id: 'coach-12', score: 68, daysAgo: 21 },
+    { id: 'coach-13',  score: 73, daysAgo: 20 }, { id: 'coach-14', score: 74, daysAgo: 19 },
+    { id: 'coach-15',  score: 76, daysAgo: 17 }, { id: 'coach-16', score: 75, daysAgo: 16 },
+    { id: 'coach-17',  score: 78, daysAgo: 15 }, { id: 'coach-18', score: 77, daysAgo: 14 },
+    { id: 'coach-19',  score: 79, daysAgo: 13 }, { id: 'coach-20', score: 80, daysAgo: 12 },
+    { id: 'coach-21',  score: 81, daysAgo: 11 }, { id: 'coach-22', score: 79, daysAgo: 10 },
+    { id: 'coach-23',  score: 83, daysAgo:  9 }, { id: 'coach-24', score: 84, daysAgo: 8 },
+    { id: 'coach-25',  score: 82, daysAgo:  7 }, { id: 'coach-26', score: 85, daysAgo: 6 },
+    { id: 'coach-27',  score: 86, daysAgo:  4 }, { id: 'coach-28', score: 88, daysAgo: 2 },
+    { id: 'coach-29',  score: 87, daysAgo:  1 },
+  ];
+  for (const s of extraSessions) {
+    await prisma.coachSession.upsert({
+      where: { id: s.id },
+      create: {
+        id: s.id,
+        userId: gradUser.id,
+        type: 'interview_practice',
+        score: s.score,
+        durationMs: 1800000,
+        createdAt: new Date(Date.now() - s.daysAgo * 24 * 60 * 60 * 1000),
+      },
+      update: {},
+    });
+  }
+
+  // ── Market sector demand trends (5 quarters × 5 sectors) ────────────────
+  const sectorTrendsRaw = [
+    { quarter: 'Q1 2025', qOrder: 1, Finance: 72, Technology: 85, Healthcare: 68, Education: 55, 'Professional Services': 70 },
+    { quarter: 'Q2 2025', qOrder: 2, Finance: 76, Technology: 88, Healthcare: 70, Education: 58, 'Professional Services': 72 },
+    { quarter: 'Q3 2025', qOrder: 3, Finance: 78, Technology: 90, Healthcare: 72, Education: 60, 'Professional Services': 74 },
+    { quarter: 'Q4 2025', qOrder: 4, Finance: 82, Technology: 92, Healthcare: 75, Education: 62, 'Professional Services': 76 },
+    { quarter: 'Q1 2026', qOrder: 5, Finance: 85, Technology: 94, Healthcare: 78, Education: 65, 'Professional Services': 78 },
+  ];
+  const sectorKeys = ['Finance', 'Technology', 'Healthcare', 'Education', 'Professional Services'] as const;
+  for (const row of sectorTrendsRaw) {
+    for (const sector of sectorKeys) {
+      await prisma.marketSectorTrend.upsert({
+        where: { institutionId_quarter_sector: { institutionId: cuhk.id, quarter: row.quarter, sector } },
+        create: { institutionId: cuhk.id, quarter: row.quarter, sector, demandIndex: row[sector] as number },
+        update: {},
+      });
+    }
+  }
+
+  // ── District salary benchmarks ────────────────────────────────────────────
+  const districtSalariesData = [
+    { district: 'Central & Western', median: 24500, q1Salary: 19000, q3Salary: 32000, jobCount: 487 },
+    { district: 'Kowloon City',       median: 21000, q1Salary: 17500, q3Salary: 27000, jobCount: 342 },
+    { district: 'Tsim Sha Tsui',      median: 22500, q1Salary: 18000, q3Salary: 29000, jobCount: 398 },
+    { district: 'Kwun Tong',          median: 19500, q1Salary: 16000, q3Salary: 24000, jobCount: 276 },
+    { district: 'Sha Tin',            median: 20000, q1Salary: 16500, q3Salary: 25000, jobCount: 213 },
+  ];
+  for (const d of districtSalariesData) {
+    await prisma.districtSalaryBenchmark.upsert({
+      where: { institutionId_district_year: { institutionId: cuhk.id, district: d.district, year: 2026 } },
+      create: { ...d, institutionId: cuhk.id, year: 2026 },
+      update: {},
+    });
+  }
+
+  // ── Skill shortage matrix (also supplies Dashboard skillsData) ────────────
+  const skillShortagesData = [
+    { skill: 'Data Science',       shortage: 92, demandGrowth: 28, salaryPremium: 18, supply: 72 },
+    { skill: 'Cloud Architecture', shortage: 88, demandGrowth: 32, salaryPremium: 22, supply: 58 },
+    { skill: 'Cybersecurity',      shortage: 85, demandGrowth: 24, salaryPremium: 19, supply: 62 },
+    { skill: 'AI/Machine Learning',shortage: 90, demandGrowth: 35, salaryPremium: 25, supply: 55 },
+    { skill: 'Digital Marketing',  shortage: 65, demandGrowth: 15, salaryPremium:  8, supply: 85 },
+    { skill: 'UX Design',          shortage: 72, demandGrowth: 18, salaryPremium: 12, supply: 68 },
+  ];
+  for (const s of skillShortagesData) {
+    await prisma.skillShortage.upsert({
+      where: { institutionId_skill: { institutionId: cuhk.id, skill: s.skill } },
+      create: { ...s, institutionId: cuhk.id },
+      update: {},
+    });
+  }
+
+  // ── Employer competency feedback ──────────────────────────────────────────
+  const competencyData = [
+    { competency: 'Technical Skills', current: 78, desired: 90 },
+    { competency: 'Communication',    current: 82, desired: 88 },
+    { competency: 'Problem Solving',  current: 75, desired: 92 },
+    { competency: 'Teamwork',         current: 85, desired: 90 },
+    { competency: 'Adaptability',     current: 72, desired: 88 },
+    { competency: 'Leadership',       current: 68, desired: 85 },
+  ];
+  for (const c of competencyData) {
+    await prisma.competencyFeedback.upsert({
+      where: { institutionId_competency_year: { institutionId: cuhk.id, competency: c.competency, year: 2026 } },
+      create: { ...c, institutionId: cuhk.id, year: 2026 },
+      update: {},
+    });
+  }
+
+  // ── Job posting demand forecast (Jul–Dec 2026) ────────────────────────────
+  const demandForecastData = [
+    { month: 'Jul', monthOrder: 7,  actual: 2560, forecast: 2580, historical: 2420 },
+    { month: 'Aug', monthOrder: 8,  actual: 2650, forecast: 2720, historical: 2510 },
+    { month: 'Sep', monthOrder: 9,  actual: 2780, forecast: 2850, historical: 2640 },
+    { month: 'Oct', monthOrder: 10, actual: null, forecast: 2980, historical: 2750 },
+    { month: 'Nov', monthOrder: 11, actual: null, forecast: 3100, historical: 2820 },
+    { month: 'Dec', monthOrder: 12, actual: null, forecast: 3050, historical: 2900 },
+  ];
+  for (const f of demandForecastData) {
+    await prisma.demandForecast.upsert({
+      where: { institutionId_year_month: { institutionId: cuhk.id, year: 2026, month: f.month } },
+      create: { ...f, institutionId: cuhk.id, year: 2026 },
+      update: {},
+    });
+  }
+
+  // ── Partnership pipeline (funnel stages) ─────────────────────────────────
+  const pipelineData = [
+    { stage: 'Prospecting',        count: 48, conversionRate: 67, sortOrder: 1 },
+    { stage: 'Initial Contact',    count: 32, conversionRate: 75, sortOrder: 2 },
+    { stage: 'Engaged',            count: 24, conversionRate: 75, sortOrder: 3 },
+    { stage: 'Partnership Active', count: 18, conversionRate: 100, sortOrder: 4 },
+  ];
+  for (const p of pipelineData) {
+    await prisma.partnershipPipeline.upsert({
+      where: { institutionId_stage: { institutionId: cuhk.id, stage: p.stage } },
+      create: { ...p, institutionId: cuhk.id },
+      update: { count: p.count },
+    });
+  }
+
+  // ── Employer satisfaction trends (quarterly) ──────────────────────────────
+  const satisfactionTrendsData = [
+    { quarter: 'Q1 2025', quarterOrder: 1, overall: 8.1, graduates: 7.8, support: 8.3, processes: 7.9 },
+    { quarter: 'Q2 2025', quarterOrder: 2, overall: 8.2, graduates: 8.0, support: 8.4, processes: 8.1 },
+    { quarter: 'Q3 2025', quarterOrder: 3, overall: 8.3, graduates: 8.2, support: 8.5, processes: 8.2 },
+    { quarter: 'Q4 2025', quarterOrder: 4, overall: 8.4, graduates: 8.3, support: 8.6, processes: 8.3 },
+  ];
+  for (const s of satisfactionTrendsData) {
+    await prisma.employerSatisfactionTrend.upsert({
+      where: { institutionId_quarter: { institutionId: cuhk.id, quarter: s.quarter } },
+      create: { ...s, institutionId: cuhk.id },
+      update: {},
+    });
+  }
+
+  // ── Employer events (monthly, Jan–Jun 2026) ────────────────────────────────
+  const employerEventsData = [
+    { month: 'Jan', monthOrder: 1, careerFairs: 2, workshops: 4, networking: 3, attendance: 487 },
+    { month: 'Feb', monthOrder: 2, careerFairs: 1, workshops: 5, networking: 4, attendance: 534 },
+    { month: 'Mar', monthOrder: 3, careerFairs: 3, workshops: 6, networking: 5, attendance: 678 },
+    { month: 'Apr', monthOrder: 4, careerFairs: 2, workshops: 4, networking: 3, attendance: 512 },
+    { month: 'May', monthOrder: 5, careerFairs: 1, workshops: 7, networking: 6, attendance: 623 },
+    { month: 'Jun', monthOrder: 6, careerFairs: 4, workshops: 5, networking: 4, attendance: 789 },
+  ];
+  for (const e of employerEventsData) {
+    await prisma.employerEvent.upsert({
+      where: { institutionId_year_month: { institutionId: cuhk.id, year: 2026, month: e.month } },
+      create: { ...e, institutionId: cuhk.id, year: 2026 },
+      update: {},
+    });
+  }
+
+  // ── Partnership activity feed ─────────────────────────────────────────────
+  const activityData = [
+    { type: 'new',      employer: 'Deloitte HK',     action: 'MoU signed for 15 internship placements',        daysAgo: 0,  hoursAgo: 2 },
+    { type: 'event',    employer: 'HSBC',             action: 'Career workshop scheduled for July 15',          daysAgo: 0,  hoursAgo: 5 },
+    { type: 'feedback', employer: 'Alibaba Cloud',    action: 'Submitted employer satisfaction survey (9.0/10)', daysAgo: 1,  hoursAgo: 0 },
+    { type: 'job',      employer: 'JP Morgan',        action: 'Posted 8 new graduate positions',                daysAgo: 2,  hoursAgo: 0 },
+    { type: 'meeting',  employer: 'Hospital Authority',action: 'Partnership renewal meeting completed',         daysAgo: 3,  hoursAgo: 0 },
+  ];
+  for (const a of activityData) {
+    const createdAt = new Date(Date.now() - (a.daysAgo * 24 + a.hoursAgo) * 60 * 60 * 1000);
+    await prisma.partnershipActivity.create({
+      data: { institutionId: cuhk.id, type: a.type, employer: a.employer, action: a.action, createdAt },
+    }).catch(() => {}); // skip duplicates on re-seed
+  }
+
+  // ── Alumni events (for AlumniPathsScreen in consumer app) ─────────────────
+  const alumniEventsData = [
+    { id: 'ae-01', title: 'Data Career Transitions Panel',   date: '2026-05-28', time: '18:30-20:00', host: 'CS Alumni Network',       mode: 'Hybrid',    relevantPathIds: ['path-02', 'path-04'] },
+    { id: 'ae-02', title: 'From IC to Manager Workshop',     date: '2026-06-05', time: '19:00-21:00', host: 'Career Services Office',   mode: 'In-person', relevantPathIds: ['path-02', 'path-05'] },
+    { id: 'ae-03', title: 'Alumni Coffee Chat: Tech Sector', date: '2026-06-12', time: '10:00-12:00', host: 'Tech Alumni Chapter',      mode: 'Online',    relevantPathIds: ['path-03', 'path-04'] },
+  ];
+  for (const e of alumniEventsData) {
+    await prisma.alumniEvent.upsert({
+      where: { id: e.id },
+      create: { id: e.id, institutionId: cuhk.id, title: e.title, date: new Date(e.date), time: e.time, host: e.host, mode: e.mode, relevantPathIds: e.relevantPathIds },
+      update: {},
+    });
+  }
+
   console.log('\nSeeding complete!');
   console.log('─────────────────────────────────────────');
   console.log('Demo accounts:');

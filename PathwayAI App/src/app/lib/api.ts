@@ -66,6 +66,7 @@ export const jobs = {
 export const applications = {
   list: () => api.get<Application[]>('/applications'),
   stats: () => api.get<AppStats>('/applications/stats'),
+  get: (id: string) => api.get<ApplicationDetail>(`/applications/${id}`),
   apply: (jobId: string, notes?: string) =>
     api.post<Application>('/applications', { jobId, notes }),
   update: (id: string, data: Partial<Application>) =>
@@ -119,6 +120,7 @@ export const coaching = {
 export const programmes = {
   list: () => api.get<GraduateProgramme[]>('/programmes'),
   alumniPaths: () => api.get<AlumniPath[]>('/programmes/alumni-paths'),
+  alumniEvents: () => api.get<AlumniEvent[]>('/programmes/alumni-events'),
 };
 
 // Analytics
@@ -205,6 +207,22 @@ export interface Application {
   job?: { title: string; company: string; district: string; sector?: string };
 }
 
+export interface ApplicationDetail extends Omit<Application, 'job'> {
+  job?: {
+    id: string;
+    title: string;
+    company: string;
+    district: string;
+    sector?: string;
+    salaryMin: number;
+    salaryMax: number;
+    responsibilities: string;
+    requirements: string;
+    skills: string[];
+    deadline?: string;
+  };
+}
+
 export interface AppStats {
   total: number;
   pending: number;
@@ -273,6 +291,16 @@ export interface AlumniPath {
   typicalRoles: string[];
   timeToTransition: string;
   description?: string;
+}
+
+export interface AlumniEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  host: string;
+  mode: string;
+  relevantPathIds: string[];
 }
 
 export interface StudentAnalytics {

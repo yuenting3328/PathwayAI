@@ -27,6 +27,7 @@ import ProgrammesScreen from './screens/ProgrammesScreen';
 import AlumniPathsScreen from './screens/AlumniPathsScreen';
 import CredentialsWalletScreen from './screens/CredentialsWalletScreen';
 import ApplicationsScreen from './screens/ApplicationsScreen';
+import ApplicationDetailScreen from './screens/ApplicationDetailScreen';
 import InterviewsScreen from './screens/InterviewsScreen';
 import InterviewSessionSetupScreen from './screens/InterviewSessionSetupScreen';
 import InterviewPracticeScreen from './screens/InterviewPracticeScreen';
@@ -237,6 +238,14 @@ function AppRoutes() {
               element={
                 <Layout>
                   <ApplicationsScreen />
+                </Layout>
+              }
+            />
+            <Route
+              path="/applications/:id"
+              element={
+                <Layout>
+                  <ApplicationDetailScreen />
                 </Layout>
               }
             />

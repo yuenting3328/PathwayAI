@@ -82,7 +82,7 @@ export default function AnalyticsScreen() {
         <div className="bg-[#1e293b] rounded-xl p-6 border border-[#334155]">
           <h3 className="text-white mb-4">{t('Match Score Trend', '配對度趨勢')}</h3>
           <div className="h-40 flex items-end justify-between gap-2">
-            {data?.matchScoreTrend ?? [60, 63, 67, 70, 74, 78].map((score, idx) => (
+            {(data?.matchScoreTrend ?? [60, 63, 67, 70, 74, 78]).map((score, idx) => (
               <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                 <div
                   className="w-full bg-gradient-to-t from-[#6366F1] to-[#8b5cf6] rounded-t"

@@ -1,109 +1,161 @@
-import { TrendingUp, TrendingDown, Users, DollarSign, Clock, GraduationCap, Download, Mail, Calendar, Filter, Search, ChevronRight, AlertCircle, CheckCircle2, MapPin, Briefcase, Target } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { useState } from 'react';
+import { TrendingUp, TrendingDown, Download, Mail, Calendar, Search, ChevronRight, AlertCircle, CheckCircle2, MapPin, Target } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect } from 'react';
+import { analytics, institution, type InstitutionAnalytics, type Programme, type GraduateOutcome, type InstitutionSnapshot, type ProgrammeSnapshot, type InstitutionInsight } from '../lib/api';
 
 export default function InstitutionalAnalytics() {
   const [selectedProgramme, setSelectedProgramme] = useState<string | null>(null);
   const [cohortYear, setCohortYear] = useState('2026');
   const [faculty, setFaculty] = useState('All');
+  const [analyticsData, setAnalyticsData] = useState<InstitutionAnalytics | null>(null);
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
+  const [outcomes, setOutcomes] = useState<GraduateOutcome[]>([]);
+  const [snapshots, setSnapshots] = useState<InstitutionSnapshot[]>([]);
+  const [programmeSnapshots, setProgrammeSnapshots] = useState<ProgrammeSnapshot[]>([]);
+  const [institutionInsights, setInstitutionInsights] = useState<InstitutionInsight[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      analytics.institution(),
+      institution.programmes(),
+      institution.outcomes(),
+      institution.snapshots(),
+      institution.programmeSnapshots(),
+      institution.insights(),
+    ]).then(([a, p, o, s, ps, ins]) => {
+      setAnalyticsData(a);
+      setProgrammes(p);
+      setOutcomes(o);
+      setSnapshots(s);
+      setProgrammeSnapshots(ps);
+      setInstitutionInsights(ins);
+    }).catch(console.error);
+  }, []);
 
   // A. Hero KPIs
   const heroKPIs = [
-    { label: 'Overall Employment Rate', value: '87.5%', change: '+2.3%', trend: 'up', period: 'Last 6 months' },
+    { label: 'Overall Employment Rate', value: analyticsData ? `${analyticsData.employmentRate.toFixed(1)}%` : '—', change: '+2.3%', trend: 'up', period: 'Last 6 months' },
     { label: 'Median Starting Salary', value: 'HKD $18,500', change: '+5.2%', trend: 'up', period: 'vs last cohort' },
     { label: 'Median Time to First Offer', value: '45 days', change: '-8 days', trend: 'up', period: 'vs last cohort' },
     { label: 'Further Studies vs Employment', value: '12.5%', change: '87.5% employed', trend: 'neutral', period: 'Current cohort' },
   ];
 
-  // C. University-wide outcomes - Time series
-  const employmentTrends = [
-    { year: '2022', employmentRate: 82.1, medianSalary: 16500, timeToOffer: 52 },
-    { year: '2023', employmentRate: 84.3, medianSalary: 17200, timeToOffer: 49 },
-    { year: '2024', employmentRate: 85.8, medianSalary: 17800, timeToOffer: 47 },
-    { year: '2025', employmentRate: 86.9, medianSalary: 18200, timeToOffer: 46 },
-    { year: '2026', employmentRate: 87.5, medianSalary: 18500, timeToOffer: 45 },
-  ];
+  // C. University-wide outcomes — from InstitutionSnapshot
+  const employmentTrends = snapshots.map(s => ({
+    year: s.year.toString(),
+    employmentRate: s.employmentRate,
+    medianSalary: s.medianSalary,
+    timeToOffer: s.timeToOfferDays,
+  }));
 
-  // Outcomes distribution
-  const outcomesDistribution = [
-    { category: 'Employment', '2024': 1245, '2025': 1387, '2026': 1456 },
-    { category: 'Further Study', '2024': 187, '2025': 203, '2026': 218 },
-    { category: 'Seeking', '2024': 134, '2025': 98, '2026': 76 },
-    { category: 'Other', '2024': 45, '2025': 38, '2026': 32 },
-  ];
+  // Outcomes distribution — pivot snapshots by category
+  const outcomesDistribution = (() => {
+    const years = snapshots.map(s => s.year.toString());
+    return ['Employment', 'Further Study', 'Seeking', 'Other'].map(category => {
+      const row: Record<string, string | number> = { category };
+      snapshots.forEach(s => {
+        row[s.year.toString()] = category === 'Employment' ? s.employedCount
+          : category === 'Further Study' ? s.furtherStudyCount
+          : category === 'Seeking' ? s.seekingCount
+          : s.otherCount;
+      });
+      return row;
+    });
+  })();
 
-  // Sector breakdown
-  const sectorBreakdown = [
-    { sector: 'Finance & Insurance', count: 428, percentage: 29.4, color: '#6366F1' },
-    { sector: 'IT & Technology', count: 387, percentage: 26.6, color: '#0EA5E9' },
-    { sector: 'Professional Services', count: 298, percentage: 20.5, color: '#34D399' },
-    { sector: 'Public Sector', count: 187, percentage: 12.8, color: '#FBBF24' },
-    { sector: 'Healthcare', count: 98, percentage: 6.7, color: '#A78BFA' },
-    { sector: 'Other', count: 58, percentage: 4.0, color: '#8A8A9E' },
-  ];
+  // Sector breakdown from analytics
+  const SECTOR_COLORS = ['#6366F1', '#0EA5E9', '#34D399', '#FBBF24', '#A78BFA', '#8A8A9E'];
+  const sectorBreakdown = (() => {
+    if (!analyticsData) return [] as { sector: string; count: number; percentage: number; color: string }[];
+    const entries = (Object.entries(analyticsData.sectorBreakdown) as [string, number][])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+    const total = entries.reduce((s, [, c]) => s + c, 0) || 1;
+    return entries.map(([sector, count], i) => ({
+      sector,
+      count,
+      percentage: +((count / total) * 100).toFixed(1),
+      color: SECTOR_COLORS[i % SECTOR_COLORS.length],
+    }));
+  })();
 
-  // District distribution
-  const districtData = [
-    { district: 'Central & Western', count: 487, percentage: 33.4 },
-    { district: 'Kowloon East', count: 342, percentage: 23.5 },
-    { district: 'Tsim Sha Tsui', count: 298, percentage: 20.5 },
-    { district: 'New Territories', count: 187, percentage: 12.8 },
-    { district: 'Overseas', count: 142, percentage: 9.8 },
-  ];
+  // District distribution derived from outcomes
+  const districtData = (() => {
+    const counts: Record<string, number> = {};
+    outcomes.forEach(o => {
+      const geo = o.geography ?? 'Unknown';
+      counts[geo] = (counts[geo] ?? 0) + 1;
+    });
+    const total = outcomes.length || 1;
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([district, count]) => ({
+        district,
+        count,
+        percentage: +((count / total) * 100).toFixed(1),
+      }));
+  })();
 
-  // D. Programme performance table
-  const programmePerformance = [
-    { id: 1, programme: 'BBA in Finance', faculty: 'Business', employmentRate: 94.2, medianSalary: 24500, timeToOffer: 38, targetRoles: 91, satisfaction: 8.7 },
-    { id: 2, programme: 'BEng in Computer Science', faculty: 'Engineering', employmentRate: 92.8, medianSalary: 26000, timeToOffer: 35, targetRoles: 94, satisfaction: 9.1 },
-    { id: 3, programme: 'BSc in Data Science', faculty: 'Science', employmentRate: 91.5, medianSalary: 25500, timeToOffer: 37, targetRoles: 89, satisfaction: 8.9 },
-    { id: 4, programme: 'BBA in Marketing', faculty: 'Business', employmentRate: 89.7, medianSalary: 22000, timeToOffer: 42, targetRoles: 86, satisfaction: 8.4 },
-    { id: 5, programme: 'BA in Communication', faculty: 'Arts', employmentRate: 85.3, medianSalary: 19500, timeToOffer: 48, targetRoles: 78, satisfaction: 7.9 },
-    { id: 6, programme: 'BSc in Nursing', faculty: 'Medicine', employmentRate: 96.1, medianSalary: 21000, timeToOffer: 28, targetRoles: 97, satisfaction: 9.2 },
-    { id: 7, programme: 'LLB Law', faculty: 'Law', employmentRate: 88.4, medianSalary: 23500, timeToOffer: 45, targetRoles: 82, satisfaction: 8.3 },
-    { id: 8, programme: 'BA in English', faculty: 'Arts', employmentRate: 82.6, medianSalary: 18500, timeToOffer: 52, targetRoles: 71, satisfaction: 7.6 },
-  ];
+  // D. Programme performance from API
+  const programmePerformance = programmes;
 
-  // Department summary
-  const departmentSummary = [
-    { faculty: 'Business', avgEmployment: 91.2, avgSalary: 23200, benchmark: 'above', delta: '+3.7%' },
-    { faculty: 'Engineering', avgEmployment: 90.8, avgSalary: 24800, benchmark: 'above', delta: '+3.3%' },
-    { faculty: 'Medicine', avgEmployment: 94.3, avgSalary: 21500, benchmark: 'above', delta: '+6.8%' },
-    { faculty: 'Science', avgEmployment: 88.7, avgSalary: 22100, benchmark: 'above', delta: '+1.2%' },
-    { faculty: 'Arts', avgEmployment: 84.1, avgSalary: 19000, benchmark: 'below', delta: '-3.4%' },
-    { faculty: 'Law', avgEmployment: 88.4, avgSalary: 23500, benchmark: 'neutral', delta: '+0.9%' },
-  ];
+  // Department summary derived from programmes
+  const departmentSummary = (() => {
+    if (programmes.length === 0) return [] as { faculty: string; avgEmployment: number; avgSalary: number; benchmark: string; delta: string }[];
+    const faculties = [...new Set(programmes.map(p => p.faculty))];
+    const uniAvgEmployment = programmes.reduce((s, p) => s + p.employmentRate, 0) / programmes.length;
+    return faculties.map(fac => {
+      const facProgs = programmes.filter(p => p.faculty === fac);
+      const avgEmployment = facProgs.reduce((s, p) => s + p.employmentRate, 0) / facProgs.length;
+      const avgSalary = Math.round(facProgs.reduce((s, p) => s + p.avgSalary, 0) / facProgs.length);
+      const delta = avgEmployment - uniAvgEmployment;
+      return {
+        faculty: fac,
+        avgEmployment: +avgEmployment.toFixed(1),
+        avgSalary,
+        benchmark: delta > 1 ? 'above' : delta < -1 ? 'below' : 'neutral',
+        delta: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`,
+      };
+    });
+  })();
 
-  // E. Cohort drilldown data
-  const cohortRecords = [
-    { id: 'A001', outcomeStatus: 'Employed', roleTitle: 'Financial Analyst', sector: 'Finance', salaryBand: 'HKD 22-26K', location: 'Central & Western' },
-    { id: 'A002', outcomeStatus: 'Employed', roleTitle: 'Software Engineer', sector: 'Technology', salaryBand: 'HKD 24-28K', location: 'Kowloon East' },
-    { id: 'A003', outcomeStatus: 'Further Study', roleTitle: 'Master Programme', sector: 'Education', salaryBand: 'N/A', location: 'Overseas' },
-    { id: 'A004', outcomeStatus: 'Employed', roleTitle: 'Marketing Executive', sector: 'Professional Services', salaryBand: 'HKD 18-22K', location: 'Tsim Sha Tsui' },
-    { id: 'A005', outcomeStatus: 'Employed', roleTitle: 'Data Scientist', sector: 'Technology', salaryBand: 'HKD 26-30K', location: 'Central & Western' },
-    { id: 'A006', outcomeStatus: 'Seeking', roleTitle: 'Job Seeking', sector: 'N/A', salaryBand: 'N/A', location: 'N/A' },
-    { id: 'A007', outcomeStatus: 'Employed', roleTitle: 'Registered Nurse', sector: 'Healthcare', salaryBand: 'HKD 20-24K', location: 'New Territories' },
-    { id: 'A008', outcomeStatus: 'Employed', roleTitle: 'Consultant', sector: 'Professional Services', salaryBand: 'HKD 22-26K', location: 'Central & Western' },
-  ];
+  // E. Cohort drilldown data from outcomes
+  const cohortRecords = outcomes.map(o => ({
+    id: o.cohortRef,
+    outcomeStatus: o.role ? 'Employed' : o.sector === 'Education' ? 'Further Study' : 'Seeking',
+    roleTitle: o.role ?? (o.sector === 'Education' ? 'Further Study' : 'Job Seeking'),
+    sector: o.sector ?? 'N/A',
+    salaryBand: o.salaryBand ?? 'N/A',
+    location: o.geography ?? 'N/A',
+  }));
 
-  // F. Insights and alerts
-  const insights = [
-    { type: 'success', title: 'BSc CS graduates saw a 12% increase in median salary vs last cohort', description: 'From HKD $23,200 to HKD $26,000 - strongest growth across all programmes', timestamp: '2 hours ago' },
-    { type: 'alert', title: 'Time-to-offer for Arts graduates rose by 8 days', description: 'Now at 50 days vs 42 days last year - recommend enhanced career support', timestamp: '5 hours ago' },
-    { type: 'info', title: 'Finance sector hiring increased 15% this quarter', description: 'Strong demand for BBA Finance and related programmes', timestamp: '1 day ago' },
-  ];
+  // Relative timestamp helper
+  const relativeTime = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days !== 1 ? 's' : ''} ago`;
+  };
 
-  const alerts = [
-    { type: 'warning', title: 'BA English employment rate dropped below HK-wide benchmark', description: '82.6% vs 85% benchmark - requires curriculum review', timestamp: '3 days ago' },
-    { type: 'warning', title: 'Small cohort detected: MA Psychology (n=12)', description: 'Data aggregated for privacy - detailed analytics unavailable', timestamp: '1 week ago' },
-  ];
+  // F. Insights and alerts from DB
+  const insights = institutionInsights
+    .filter(i => ['success', 'alert', 'info'].includes(i.type))
+    .map(i => ({ ...i, timestamp: relativeTime(i.createdAt) }));
 
-  // Programme drilldown data
-  const selectedProgrammeData = programmePerformance.find(p => p.id.toString() === selectedProgramme);
-  const programmeTrends = selectedProgramme ? [
-    { year: '2024', employmentRate: 89.2, medianSalary: 22800 },
-    { year: '2025', employmentRate: 91.5, medianSalary: 24200 },
-    { year: '2026', employmentRate: selectedProgrammeData?.employmentRate || 0, medianSalary: selectedProgrammeData?.medianSalary || 0 },
-  ] : [];
+  const alerts = institutionInsights
+    .filter(i => i.type === 'warning')
+    .map(i => ({ ...i, timestamp: relativeTime(i.createdAt) }));
+
+  // Programme drilldown
+  const selectedProgrammeData = programmes.find(p => p.id === selectedProgramme);
+  const programmeTrends = selectedProgramme
+    ? programmeSnapshots
+        .filter(s => s.programmeId === selectedProgramme)
+        .sort((a, b) => a.year - b.year)
+        .slice(-3)
+        .map(s => ({ year: s.year.toString(), employmentRate: s.employmentRate, medianSalary: s.medianSalary }))
+    : [];
 
   const typicalRoles = selectedProgramme ? [
     { role: 'Financial Analyst', count: 42, percentage: 28 },
@@ -124,7 +176,6 @@ export default function InstitutionalAnalytics() {
           </p>
         </div>
 
-        {/* Primary CTAs */}
         <div className="flex gap-3">
           <button className="h-10 px-6 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
             <Download className="w-4 h-4" />
@@ -136,7 +187,6 @@ export default function InstitutionalAnalytics() {
           </button>
         </div>
 
-        {/* Hero KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {heroKPIs.map((kpi) => (
             <div key={kpi.label} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all">
@@ -174,7 +224,6 @@ export default function InstitutionalAnalytics() {
               <option>2023</option>
             </select>
           </div>
-
           <div>
             <label className="text-[12px] text-muted-foreground uppercase tracking-wider mb-2 block">Faculty / School</label>
             <select
@@ -191,7 +240,6 @@ export default function InstitutionalAnalytics() {
               <option>Law</option>
             </select>
           </div>
-
           <div>
             <label className="text-[12px] text-muted-foreground uppercase tracking-wider mb-2 block">Degree Level</label>
             <select className="w-full h-10 px-3 bg-input border border-border rounded-lg text-[14px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
@@ -200,7 +248,6 @@ export default function InstitutionalAnalytics() {
               <option>Postgraduate</option>
             </select>
           </div>
-
           <div>
             <label className="text-[12px] text-muted-foreground uppercase tracking-wider mb-2 block">Study Mode</label>
             <select className="w-full h-10 px-3 bg-input border border-border rounded-lg text-[14px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
@@ -209,7 +256,6 @@ export default function InstitutionalAnalytics() {
               <option>Part-Time</option>
             </select>
           </div>
-
           <div>
             <label className="text-[12px] text-muted-foreground uppercase tracking-wider mb-2 block">Geography</label>
             <select className="w-full h-10 px-3 bg-input border border-border rounded-lg text-[14px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
@@ -225,7 +271,6 @@ export default function InstitutionalAnalytics() {
       <div className="space-y-6">
         <h2 className="text-[20px] font-semibold text-foreground">University-wide Outcomes Overview</h2>
 
-        {/* Time series charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-border">
@@ -282,7 +327,6 @@ export default function InstitutionalAnalytics() {
           </div>
         </div>
 
-        {/* Outcomes distribution and sector breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-border">
@@ -347,7 +391,6 @@ export default function InstitutionalAnalytics() {
           </div>
         </div>
 
-        {/* District heatmap */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h3 className="text-[16px] font-semibold text-foreground">Employment by HK District</h3>
@@ -387,7 +430,6 @@ export default function InstitutionalAnalytics() {
           <button className="text-[14px] text-primary hover:underline font-medium">Save Current View</button>
         </div>
 
-        {/* Department summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {departmentSummary.map((dept) => (
             <div key={dept.faculty} className="bg-card border border-border rounded-lg p-4">
@@ -420,7 +462,6 @@ export default function InstitutionalAnalytics() {
           ))}
         </div>
 
-        {/* Programme performance table */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h3 className="text-[16px] font-semibold text-foreground">Programme Performance</h3>
@@ -442,7 +483,6 @@ export default function InstitutionalAnalytics() {
                   <th className="px-6 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Employment</th>
                   <th className="px-6 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Median Salary</th>
                   <th className="px-6 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Time to Offer</th>
-                  <th className="px-6 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Target Roles</th>
                   <th className="px-6 py-3 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Satisfaction</th>
                   <th className="px-6 py-3 text-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
@@ -450,21 +490,20 @@ export default function InstitutionalAnalytics() {
               <tbody className="divide-y divide-border">
                 {programmePerformance.map((prog) => (
                   <tr key={prog.id} className="hover:bg-accent transition-colors">
-                    <td className="px-6 py-4 text-[13px] text-foreground font-medium">{prog.programme}</td>
+                    <td className="px-6 py-4 text-[13px] text-foreground font-medium">{prog.name}</td>
                     <td className="px-6 py-4 text-[13px] text-muted-foreground">{prog.faculty}</td>
                     <td className="px-6 py-4 text-right text-[13px] font-semibold text-[#34D399]">{prog.employmentRate}%</td>
-                    <td className="px-6 py-4 text-right text-[13px] font-mono text-foreground">${prog.medianSalary.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-right text-[13px] text-muted-foreground">{prog.timeToOffer} days</td>
-                    <td className="px-6 py-4 text-right text-[13px] text-foreground">{prog.targetRoles}%</td>
+                    <td className="px-6 py-4 text-right text-[13px] font-mono text-foreground">${prog.avgSalary.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right text-[13px] text-muted-foreground">{Math.round(prog.timeToOffer * 30)} days</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-[13px] font-semibold text-foreground">{prog.satisfaction}</span>
+                        <span className="text-[13px] font-semibold text-foreground">{(prog.satisfaction * 2).toFixed(1)}</span>
                         <span className="text-[11px] text-muted-foreground">/10</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <button
-                        onClick={() => setSelectedProgramme(prog.id.toString())}
+                        onClick={() => setSelectedProgramme(prog.id)}
                         className="h-8 px-3 text-[12px] text-primary hover:bg-primary/10 rounded transition-colors"
                       >
                         Details
@@ -484,7 +523,7 @@ export default function InstitutionalAnalytics() {
           <div className="p-6">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-[18px] font-semibold text-foreground">{selectedProgrammeData.programme}</h3>
+                <h3 className="text-[18px] font-semibold text-foreground">{selectedProgrammeData.name}</h3>
                 <p className="text-[13px] text-muted-foreground mt-1">{selectedProgrammeData.faculty}</p>
               </div>
               <button onClick={() => setSelectedProgramme(null)} className="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center">
@@ -492,7 +531,6 @@ export default function InstitutionalAnalytics() {
               </button>
             </div>
 
-            {/* 3-year trend */}
             <div className="mb-6">
               <h4 className="text-[14px] font-semibold text-foreground mb-3">3-Year Trend</h4>
               <ResponsiveContainer width="100%" height={180}>
@@ -508,7 +546,6 @@ export default function InstitutionalAnalytics() {
               </ResponsiveContainer>
             </div>
 
-            {/* Typical roles */}
             <div className="mb-6">
               <h4 className="text-[14px] font-semibold text-foreground mb-3">Typical Roles & Sectors</h4>
               <div className="space-y-2">
@@ -524,7 +561,6 @@ export default function InstitutionalAnalytics() {
               </div>
             </div>
 
-            {/* Key skills */}
             <div>
               <h4 className="text-[14px] font-semibold text-foreground mb-3">Key Skill Strengths/Weaknesses</h4>
               <div className="space-y-3">
@@ -606,7 +642,7 @@ export default function InstitutionalAnalytics() {
           </table>
         </div>
         <div className="px-6 py-3 border-t border-border bg-background/50 text-[12px] text-muted-foreground flex items-center justify-between">
-          <span>Showing 8 of 1,456 records (filtered for privacy)</span>
+          <span>Showing {cohortRecords.length} records (filtered for privacy)</span>
           <button className="text-primary hover:underline">View More</button>
         </div>
       </div>
