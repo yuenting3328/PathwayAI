@@ -1,0 +1,327 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GRADUATE
+  ADVISOR
+  INSTITUTION_ADMIN
+  SUPER_ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  INTERVIEW
+  OFFERED
+  REJECTED
+  WITHDRAWN
+}
+
+enum SkillGap {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SkillImpact {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CredentialStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+}
+
+enum MarketTrend {
+  UP
+  DOWN
+  STABLE
+  HOT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(GRADUATE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile?
+  applications Application[]
+  skills       UserSkill[]
+  credentials  UserCredential[]
+  coachSessions CoachSession[]
+  savedJobs    SavedJob[]
+  chatMessages  ChatMessage[]
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+}
+
+model Profile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String?
+  university   String?
+  faculty      String?
+  degreeLevel  String?  // Bachelor, Master, PhD
+  studyMode    String?  // Full-time, Part-time
+  graduationYear Int?
+  targetRole   String?
+  targetSector String?
+  gpa          Float?
+  location     String?
+  bio          String?
+  avatarUrl    String?
+  updatedAt    DateTime @updatedAt
+}
+
+model Job {
+  id              String   @id @default(cuid())
+  title           String
+  company         String
+  district        String
+  salaryMin       Int
+  salaryMax       Int
+  responsibilities String
+  requirements    String
+  skills          String[] // array of skill names
+  sector          String?
+  deadline        DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  applications    Application[]
+  savedBy         SavedJob[]
+}
+
+model SavedJob {
+  userId    String
+  jobId     String
+  savedAt   DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@id([userId, jobId])
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  userId        String
+  jobId         String
+  status        ApplicationStatus @default(PENDING)
+  stage         String            @default("Application Submitted")
+  appliedDate   DateTime          @default(now())
+  interviewDate DateTime?
+  notes         String?
+  updatedAt     DateTime          @updatedAt
+
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job           Job  @relation(fields: [jobId], references: [id])
+}
+
+model Skill {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  category    String?
+  description String?
+
+  userSkills  UserSkill[]
+}
+
+model UserSkill {
+  id          String      @id @default(cuid())
+  userId      String
+  skillId     String
+  level       Int         @default(0) // 0-100
+  gap         SkillGap    @default(HIGH)
+  impact      SkillImpact @default(MEDIUM)
+  updatedAt   DateTime    @updatedAt
+
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill       Skill @relation(fields: [skillId], references: [id])
+
+  @@unique([userId, skillId])
+}
+
+model UserCredential {
+  id         String           @id @default(cuid())
+  userId     String
+  category   String           // "Degree & Transcript", "HEAR", "Certificates"
+  name       String
+  issuer     String
+  status     CredentialStatus @default(PENDING)
+  issuedDate DateTime?
+  fileUrl    String?
+  createdAt  DateTime         @default(now())
+
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoachSession {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   // "interview_practice", "resume_review", "career_advice"
+  topic      String?
+  summary    String?
+  score      Int?     // 0-100
+  feedback   Json?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Institution {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  domain          String?  // e.g. cuhk.edu.hk
+  logoUrl         String?
+  createdAt       DateTime @default(now())
+
+  users           User[]
+  programmes      Programme[]
+  graduateOutcomes GraduateOutcome[]
+  issuedCredentials IssuedCredential[]
+  employerRelationships EmployerRelationship[]
+}
+
+model Programme {
+  id            String   @id @default(cuid())
+  institutionId String
+  name          String
+  faculty       String
+  degreeLevel   String
+  employmentRate Float   @default(0)
+  avgSalary     Float   @default(0)
+  timeToOffer   Float   @default(0) // months
+  satisfaction  Float   @default(0) // 0-5
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  outcomes      GraduateOutcome[]
+}
+
+model GraduateOutcome {
+  id              String   @id @default(cuid())
+  institutionId   String
+  programmeId     String?
+  cohortRef       String   // anonymised "A001" etc.
+  cohortYear      Int
+  sector          String?
+  role            String?
+  company         String?
+  salaryBand      String?
+  timeToOfferDays Int?
+  geography       String?
+  createdAt       DateTime @default(now())
+
+  institution     Institution @relation(fields: [institutionId], references: [id])
+  programme       Programme?  @relation(fields: [programmeId], references: [id])
+}
+
+model IssuedCredential {
+  id            String           @id @default(cuid())
+  institutionId String
+  recipientRef  String           // anonymised graduate ref
+  type          String           // "HEAR", "Degree", "Certificate"
+  name          String
+  status        CredentialStatus @default(PENDING)
+  issuedAt      DateTime?
+  createdAt     DateTime         @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+}
+
+model Employer {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  sector      String?
+  district    String?
+  logoUrl     String?
+  website     String?
+  createdAt   DateTime @default(now())
+
+  relationships EmployerRelationship[]
+  programmes    GraduateProgramme[]
+}
+
+model EmployerRelationship {
+  id            String   @id @default(cuid())
+  institutionId String
+  employerId    String
+  tier          String   // "Platinum", "Gold", "Silver"
+  jobPostings   Int      @default(0)
+  internships   Int      @default(0)
+  placements    Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  employer      Employer    @relation(fields: [employerId], references: [id])
+
+  @@unique([institutionId, employerId])
+}
+
+model GraduateProgramme {
+  id           String   @id @default(cuid())
+  employerId   String
+  name         String
+  logo         String?
+  deadline     DateTime?
+  salaryMin    Int?
+  salaryMax    Int?
+  successRate  Float    @default(0)
+  sector       String?
+  location     String?
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  employer     Employer @relation(fields: [employerId], references: [id])
+}
+
+model MarketSignal {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  trend       MarketTrend @default(STABLE)
+  salaryMin   Int?
+  salaryMax   Int?
+  sector      String?
+  district    String?
+  role        String?
+  source      String?
+  publishedAt DateTime    @default(now())
+  expiresAt   DateTime?
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model AlumniPath {
+  id                String   @id @default(cuid())
+  name              String
+  typicalRoles      String[]
+  timeToTransition  String
+  description       String?
+  sector            String?
+  createdAt         DateTime @default(now())
+}

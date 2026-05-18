@@ -1,0 +1,225 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+
+  /* Pathway Brand Colors */
+  --pathway-primary: #6366F1;
+  --pathway-secondary: #FBBF24;
+  --pathway-danger: #F43F5E;
+  --pathway-success: #34D399;
+  --pathway-info: #0EA5E9;
+
+  /* Light Mode (not primary focus) */
+  --background: #ffffff;
+  --foreground: #0A0A0F;
+  --card: #ffffff;
+  --card-foreground: #0A0A0F;
+  --popover: #ffffff;
+  --popover-foreground: #0A0A0F;
+  --primary: #6366F1;
+  --primary-foreground: #ffffff;
+  --secondary: #FBBF24;
+  --secondary-foreground: #0A0A0F;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent: #E0E7FF;
+  --accent-foreground: #0A0A0F;
+  --destructive: #F43F5E;
+  --destructive-foreground: #ffffff;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --input-background: #F9FAFB;
+  --switch-background: #D1D5DB;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #6366F1;
+  --chart-1: #6366F1;
+  --chart-2: #0EA5E9;
+  --chart-3: #34D399;
+  --chart-4: #FBBF24;
+  --chart-5: #A78BFA;
+  --radius: 0.75rem;
+  --sidebar: #F9FAFB;
+  --sidebar-foreground: #0A0A0F;
+  --sidebar-primary: #6366F1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #F3F4F6;
+  --sidebar-accent-foreground: #0A0A0F;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #6366F1;
+}
+
+.dark {
+  /* Dark Mode - Primary Experience (Pathway Design System) */
+  --background: #0A0A0F;
+  --foreground: #FFFFFF;
+  --card: #141419;
+  --card-foreground: #FFFFFF;
+  --popover: #1F1F28;
+  --popover-foreground: #FFFFFF;
+  --primary: #6366F1;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FBBF24;
+  --secondary-foreground: #0A0A0F;
+  --muted: #232330;
+  --muted-foreground: #B4B4C8;
+  --accent: #1C1C24;
+  --accent-foreground: #FFFFFF;
+  --destructive: #F43F5E;
+  --destructive-foreground: #FFFFFF;
+  --border: #2A2A36;
+  --input: #232330;
+  --input-background: #1C1C24;
+  --ring: #6366F1;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+
+  /* Chart Colors for Data Visualization */
+  --chart-1: #6366F1;
+  --chart-2: #0EA5E9;
+  --chart-3: #34D399;
+  --chart-4: #FBBF24;
+  --chart-5: #A78BFA;
+  --chart-6: #2DD4BF;
+  --chart-7: #FB923C;
+  --chart-8: #F472B6;
+
+  /* Sidebar Navigation */
+  --sidebar: #141419;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #6366F1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1C1C24;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #2A2A36;
+  --sidebar-ring: #6366F1;
+
+  /* Additional Pathway Semantic Colors */
+  --success: #34D399;
+  --success-foreground: #FFFFFF;
+  --warning: #FBBF24;
+  --warning-foreground: #0A0A0F;
+  --info: #0EA5E9;
+  --info-foreground: #FFFFFF;
+
+  /* Text Hierarchy */
+  --text-primary: #FFFFFF;
+  --text-secondary: #B4B4C8;
+  --text-tertiary: #8A8A9E;
+  --text-disabled: #5A5A6E;
+
+  /* Background Layers */
+  --bg-base: #0A0A0F;
+  --bg-surface: #141419;
+  --bg-surface-hover: #1C1C24;
+  --bg-surface-active: #232330;
+  --bg-elevated: #1F1F28;
+
+  /* Border Variations */
+  --border-subtle: #2A2A36;
+  --border-default: #3A3A48;
+  --border-strong: #4A4A58;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
