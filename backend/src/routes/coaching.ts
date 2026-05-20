@@ -8,6 +8,10 @@ import { randomUUID } from 'node:crypto';
 import { prisma } from '../index.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import mammoth from 'mammoth';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const pdfParse = _require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
 
 // ─── Client setup ─────────────────────────────────────────────────────────────
 const PLACEHOLDER_KEY = 'your-anthropic-api-key-here';
@@ -225,7 +229,7 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
           type: 'career_advice',
           topic: input.title as string,
           summary: `Action plan created: ${input.title}`,
-          feedback: input as Record<string, unknown>,
+          feedback: input as never,
         },
       });
       return `Action plan "${input.title as string}" saved to your profile.`;
@@ -242,17 +246,14 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
       return 'Coaching session logged successfully.';
     }
     case 'update_target_role': {
+      const patch = {
+        ...(input.targetRole ? { targetRole: input.targetRole as string } : {}),
+        ...(input.targetSector ? { targetSector: input.targetSector as string } : {}),
+      };
       await prisma.profile.upsert({
         where: { userId },
-        update: {
-          ...(input.targetRole && { targetRole: input.targetRole as string }),
-          ...(input.targetSector && { targetSector: input.targetSector as string }),
-        },
-        create: {
-          userId,
-          ...(input.targetRole && { targetRole: input.targetRole as string }),
-          ...(input.targetSector && { targetSector: input.targetSector as string }),
-        },
+        update: patch,
+        create: { userId, ...patch },
       });
       return 'Profile updated with your target role and sector.';
     }
@@ -711,8 +712,9 @@ export default async function coachRoutes(app: FastifyInstance) {
     const body = schema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
 
+    const { feedback, ...rest } = body.data;
     const session = await prisma.coachSession.create({
-      data: { userId: sub, ...body.data },
+      data: { userId: sub, ...rest, ...(feedback ? { feedback: feedback as never } : {}) },
     });
     return reply.status(201).send(session);
   });
@@ -902,6 +904,53 @@ export default async function coachRoutes(app: FastifyInstance) {
       .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
       .header('Content-Disposition', `attachment; filename="${entry.filename}"`)
       .send(buffer);
+  });
+
+  // CV upload — parse PDF/DOCX/TXT and store raw text
+  app.post('/cv/upload', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { sub } = request.user as { sub: string };
+    const data = await request.file();
+    if (!data) return reply.status(400).send({ error: 'No file uploaded' });
+
+    const buffer = await data.toBuffer();
+    const filename = data.filename.toLowerCase();
+    let rawText = '';
+
+    if (filename.endsWith('.pdf')) {
+      const parsed = await pdfParse(buffer);
+      rawText = parsed.text;
+    } else if (filename.endsWith('.docx')) {
+      const result = await mammoth.extractRawText({ buffer });
+      rawText = result.value;
+    } else if (filename.endsWith('.txt')) {
+      rawText = buffer.toString('utf-8');
+    } else {
+      return reply.status(400).send({ error: 'Unsupported file type. Use PDF, DOCX, or TXT.' });
+    }
+
+    await prisma.userCV.updateMany({ where: { userId: sub, isActive: true }, data: { isActive: false } });
+    const cv = await prisma.userCV.create({ data: { userId: sub, filename: data.filename, rawText } });
+
+    return reply.status(201).send({ id: cv.id, filename: cv.filename, createdAt: cv.createdAt });
+  });
+
+  // CV apply edits — mark selected suggestions as applied
+  app.post('/cv/apply', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { sub } = request.user as { sub: string };
+    const schema = z.object({ editIds: z.array(z.string()).min(1) });
+    const body = schema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
+
+    const edits = await prisma.cVEdit.findMany({
+      where: { id: { in: body.data.editIds }, cv: { userId: sub } },
+    });
+    if (edits.length === 0) return reply.status(404).send({ error: 'No edits found' });
+
+    await prisma.cVEdit.updateMany({
+      where: { id: { in: edits.map(e => e.id) } },
+      data: { applied: true },
+    });
+    return { applied: edits.length };
   });
 
   // Existing — coaching stats

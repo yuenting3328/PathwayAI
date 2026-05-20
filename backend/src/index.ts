@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import sensible from '@fastify/sensible';
+import multipart from '@fastify/multipart';
 import { PrismaClient } from '@prisma/client';
 
 import authRoutes from './routes/auth.js';
@@ -34,6 +35,7 @@ await app.register(jwt, {
 });
 
 await app.register(sensible);
+await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } }); // 5 MB
 
 // Auth middleware decorator
 app.decorate('authenticate', async (request: any, reply: any) => {

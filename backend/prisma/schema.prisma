@@ -65,6 +65,8 @@ model User {
 
   institutionId String?
   institution   Institution? @relation(fields: [institutionId], references: [id])
+
+  cvs           UserCV[]
 }
 
 model Profile {
@@ -330,6 +332,32 @@ model ChatMessage {
   role      String   // "user" | "assistant"
   content   String
   createdAt DateTime @default(now())
+}
+
+model UserCV {
+  id        String   @id @default(cuid())
+  userId    String
+  filename  String
+  rawText   String
+  fileUrl   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  edits     CVEdit[]
+}
+
+model CVEdit {
+  id          String   @id @default(cuid())
+  cvId        String
+  section     String
+  original    String
+  suggestion  String
+  reason      String?
+  applied     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  cv          UserCV   @relation(fields: [cvId], references: [id], onDelete: Cascade)
 }
 
 model AlumniPath {
