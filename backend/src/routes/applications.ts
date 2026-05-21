@@ -16,6 +16,21 @@ export default async function applicationRoutes(app: FastifyInstance) {
     return applications;
   });
 
+  // GET /api/v1/applications/stats — summary counts
+  // NOTE: must be registered before /:id to avoid Fastify matching 'stats' as the :id param
+  app.get('/stats', { preHandler: [app.authenticate] }, async (request) => {
+    const { sub } = request.user as { sub: string };
+    const all = await prisma.application.findMany({ where: { userId: sub } });
+    return {
+      total: all.length,
+      pending: all.filter((a) => a.status === 'PENDING' && a.stage !== 'Shortlisted').length,
+      shortlisted: all.filter((a) => a.stage === 'Shortlisted').length,
+      interviews: all.filter((a) => a.status === 'INTERVIEW').length,
+      offers: all.filter((a) => a.status === 'OFFERED').length,
+      rejected: all.filter((a) => a.status === 'REJECTED').length,
+    };
+  });
+
   // POST /api/v1/applications — apply to a job
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { sub } = request.user as { sub: string };
@@ -86,18 +101,5 @@ export default async function applicationRoutes(app: FastifyInstance) {
 
     await prisma.application.update({ where: { id }, data: { status: 'WITHDRAWN' } });
     return { success: true };
-  });
-
-  // GET /api/v1/applications/stats — summary counts
-  app.get('/stats', { preHandler: [app.authenticate] }, async (request) => {
-    const { sub } = request.user as { sub: string };
-    const all = await prisma.application.findMany({ where: { userId: sub } });
-    return {
-      total: all.length,
-      pending: all.filter((a) => a.status === 'PENDING').length,
-      interviews: all.filter((a) => a.status === 'INTERVIEW').length,
-      offers: all.filter((a) => a.status === 'OFFERED').length,
-      rejected: all.filter((a) => a.status === 'REJECTED').length,
-    };
   });
 }

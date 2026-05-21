@@ -1,8 +1,9 @@
-import { ArrowLeft, ExternalLink, Star, MessageCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Star, MessageCircle, CheckCircle, Briefcase } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { jobs as jobsApi, type Job } from '../lib/api';
+import { jobs as jobsApi, applications as appsApi, type Job } from '../lib/api';
 
 export default function JobDetailScreen() {
   const navigate = useNavigate();
@@ -11,10 +12,25 @@ export default function JobDetailScreen() {
   const [activeTab, setActiveTab] = useState<'skills' | 'experience' | 'education' | 'personality'>('skills');
   const [saved, setSaved] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (jobId) jobsApi.get(jobId).then(data => { setJob(data); setSaved(data.saved); }).catch(console.error);
   }, [jobId]);
+
+  const handleApply = async () => {
+    if (!jobId || applying) return;
+    setApplying(true);
+    try {
+      await appsApi.apply(jobId);
+      setShowSuccess(true);
+    } catch (err: any) {
+      if (err?.status === 409) setShowSuccess(true); // already applied
+    } finally {
+      setApplying(false);
+    }
+  };
 
   if (!job) {
     return (
@@ -39,8 +55,12 @@ export default function JobDetailScreen() {
 
       {/* Fixed Action Buttons */}
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/50 p-6 space-y-3 z-50">
-        <button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 font-semibold">
-          <span>{t('Apply', '申請職位')}</span>
+        <button
+          onClick={handleApply}
+          disabled={applying}
+          className="w-full py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 font-semibold transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-indigo-500/30 hover:opacity-90 disabled:opacity-60"
+        >
+          <span>{applying ? t('Submitting…', '提交中…') : t('Apply', '申請職位')}</span>
           <ExternalLink className="w-4 h-4" />
         </button>
         <button
@@ -51,6 +71,58 @@ export default function JobDetailScreen() {
           <span>{t('Ask Coach about this role', '向教練查詢此職位')}</span>
         </button>
       </div>
+
+      {/* Application Success Bottom Sheet */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end"
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-full bg-slate-900 border-t border-slate-700/50 rounded-t-3xl px-6 pt-6 pb-10"
+            >
+              {/* Handle bar */}
+              <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
+
+              {/* Success icon */}
+              <div className="flex flex-col items-center text-center mb-8">
+                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30">
+                  <CheckCircle className="w-8 h-8 text-emerald-400" />
+                </div>
+                <h2 className="text-white text-xl font-bold mb-1">{t('Application Submitted!', '申請已提交！')}</h2>
+                <p className="text-slate-400 text-sm">
+                  {t(`Your application for ${job.title} at ${job.company} has been sent.`,
+                     `你對 ${job.company} 的 ${job.title} 職位申請已發送。`)}
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate('/applications')}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                >
+                  <Briefcase className="w-4 h-4" />
+                  {t('My Application', '我的申請')}
+                </button>
+                <button
+                  onClick={() => navigate('/jobs')}
+                  className="w-full py-3.5 rounded-xl border border-slate-700/50 text-slate-300 font-medium hover:border-slate-600 transition-colors"
+                >
+                  {t('Back to Jobs', '返回職位')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="px-6 py-6 space-y-6">
         {/* Role Header */}

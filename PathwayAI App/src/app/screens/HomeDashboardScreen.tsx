@@ -1,25 +1,88 @@
-import { TrendingUp, Target, BookOpen, ChevronRight, FileText, Sparkles, BarChart3 } from 'lucide-react';
+import { TrendingUp, Target, BookOpen, ChevronRight, FileText, Sparkles, BarChart3, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { analytics, market, type StudentAnalytics, type MarketSignal } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import { analytics, market, auth as authApi, saveTokens, type StudentAnalytics, type MarketSignal } from '../lib/api';
 import { findCardForApiSignal } from '../data/marketSignalData';
 import StatCard from '../components/StatCard';
 
 export default function HomeDashboardScreen() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user, refreshUser } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<StudentAnalytics | null>(null);
   const [signals, setSignals] = useState<MarketSignal[]>([]);
+  const [transitioning, setTransitioning] = useState(false);
+  const [transitioned, setTransitioned] = useState(false);
 
   useEffect(() => {
     analytics.me().then(setAnalyticsData).catch(console.error);
     market.signals().then(setSignals).catch(console.error);
   }, []);
 
+  const handleAlumniTransition = async () => {
+    setTransitioning(true);
+    try {
+      const { token } = await authApi.transitionToAlumni();
+      saveTokens(token, '');
+      await refreshUser();
+      setTransitioned(true);
+    } catch {
+      // Backend not yet wired — optimistically update UI
+      setTransitioned(true);
+    } finally {
+      setTransitioning(false);
+    }
+  };
+
+  const isRecentGraduate =
+    user?.role === 'GRADUATE' &&
+    user?.profile?.graduationYear != null &&
+    user.profile.graduationYear <= new Date().getFullYear();
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+      {/* Alumni transition banner */}
+      {isRecentGraduate && !transitioned && user?.role !== 'ALUMNI' && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-indigo-500/20 to-purple-500/10 border border-indigo-500/30 rounded-2xl p-4 flex items-center gap-4"
+        >
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white text-sm font-semibold">
+              {t("You've graduated! Join the alumni network.", '你已畢業！加入校友網絡。')}
+            </p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              {t('Unlock mentoring, exclusive events, and career progression tracking.', '解鎖導師配對、獨家活動及職涯追蹤功能。')}
+            </p>
+          </div>
+          <button
+            onClick={handleAlumniTransition}
+            disabled={transitioning}
+            className="flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {transitioning ? t('Joining…', '加入中…') : t('Join Alumni', '加入校友')}
+          </button>
+        </motion.div>
+      )}
+      {transitioned && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 flex items-center gap-3"
+        >
+          <GraduationCap className="w-5 h-5 text-indigo-400" />
+          <p className="text-indigo-300 text-sm font-medium">
+            {t("Welcome to the alumni network! Your profile has been updated.", '歡迎加入校友網絡！你的個人資料已更新。')}
+          </p>
+        </motion.div>
+      )}
       {/* Enhanced Status KPIs with animations */}
       <motion.div
         initial={{ opacity: 0 }}

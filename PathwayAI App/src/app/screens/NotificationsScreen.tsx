@@ -1,88 +1,55 @@
-import { ArrowLeft, Bell, Briefcase, MessageCircle, Award, TrendingUp, Calendar, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Bell, Briefcase, Award, Calendar, CheckCircle, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { notifications as notifApi, type Notification } from '../lib/api';
+
+function iconForType(type: string) {
+  switch (type) {
+    case 'STAGE_CHANGE': return Calendar;
+    case 'CREDENTIAL_ISSUED': return Award;
+    case 'JOB_MATCH': return TrendingUp;
+    default: return Briefcase;
+  }
+}
+
+function colorForType(type: string) {
+  switch (type) {
+    case 'STAGE_CHANGE':
+      return { card: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30', icon: 'text-indigo-400', iconBg: 'bg-indigo-500/20' };
+    case 'CREDENTIAL_ISSUED':
+      return { card: 'from-emerald-500/20 to-green-500/10 border-emerald-500/30', icon: 'text-emerald-400', iconBg: 'bg-emerald-500/20' };
+    default:
+      return { card: 'from-slate-500/20 to-slate-600/10 border-slate-500/30', icon: 'text-slate-400', iconBg: 'bg-slate-500/20' };
+  }
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 export default function NotificationsScreen() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const [list, setList] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const notifications = [
-    {
-      id: '1',
-      type: 'interview',
-      title: t('Interview Reminder', '面試提醒'),
-      message: t('HSBC interview tomorrow at 2:00 PM', 'HSBC 明天下午 2:00 面試'),
-      time: '2 hours ago',
-      read: false,
-      icon: Calendar,
-      color: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30',
-      iconColor: 'text-indigo-400',
-      iconBg: 'bg-indigo-500/20',
-    },
-    {
-      id: '2',
-      type: 'application',
-      title: t('Application Viewed', '申請已查看'),
-      message: t('Standard Chartered viewed your application', 'Standard Chartered 已查看你的申請'),
-      time: '5 hours ago',
-      read: false,
-      icon: Briefcase,
-      color: 'from-emerald-500/20 to-green-500/10 border-emerald-500/30',
-      iconColor: 'text-emerald-400',
-      iconBg: 'bg-emerald-500/20',
-    },
-    {
-      id: '3',
-      type: 'match',
-      title: t('New Job Match', '新職位配對'),
-      message: t('3 new roles match your profile - 92% fit', '3 個新職位與你的個人資料配對 - 92% 吻合'),
-      time: '1 day ago',
-      read: false,
-      icon: TrendingUp,
-      color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
-      iconColor: 'text-amber-400',
-      iconBg: 'bg-amber-500/20',
-    },
-    {
-      id: '4',
-      type: 'coach',
-      title: t('Coach Message', '教練訊息'),
-      message: t('Your coach shared interview prep tips', '你的教練分享了面試準備貼士'),
-      time: '1 day ago',
-      read: true,
-      icon: MessageCircle,
-      color: 'from-slate-500/20 to-slate-600/10 border-slate-500/30',
-      iconColor: 'text-slate-400',
-      iconBg: 'bg-slate-500/20',
-    },
-    {
-      id: '5',
-      type: 'credential',
-      title: t('Credential Verified', '證書已驗證'),
-      message: t('Your degree certificate has been verified', '你的學位證書已驗證'),
-      time: '2 days ago',
-      read: true,
-      icon: Award,
-      color: 'from-slate-500/20 to-slate-600/10 border-slate-500/30',
-      iconColor: 'text-slate-400',
-      iconBg: 'bg-slate-500/20',
-    },
-    {
-      id: '6',
-      type: 'application',
-      title: t('Application Status Update', '申請狀態更新'),
-      message: t('Deloitte moved you to the next round', 'Deloitte 將你晉升至下一輪'),
-      time: '3 days ago',
-      read: true,
-      icon: CheckCircle,
-      color: 'from-slate-500/20 to-slate-600/10 border-slate-500/30',
-      iconColor: 'text-slate-400',
-      iconBg: 'bg-slate-500/20',
-    },
-  ];
+  useEffect(() => {
+    notifApi.list().then(setList).catch(console.error).finally(() => setLoading(false));
+  }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = list.filter(n => !n.read).length;
+
+  const handleMarkAllRead = async () => {
+    await notifApi.markAllRead().catch(console.error);
+    setList(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -105,47 +72,54 @@ export default function NotificationsScreen() {
           )}
         </div>
         {unreadCount > 0 && (
-          <button className="text-indigo-400 text-sm hover:text-indigo-300 transition-colors">
+          <button
+            onClick={handleMarkAllRead}
+            className="text-indigo-400 text-sm hover:text-indigo-300 transition-colors"
+          >
             {t('Mark all read', '全部標記為已讀')}
           </button>
         )}
       </div>
 
       <div className="px-6 py-6 space-y-3">
-        {notifications.map((notification, idx) => {
-          const Icon = notification.icon;
+        {loading && (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
 
+        {!loading && list.map((n, idx) => {
+          const Icon = iconForType(n.type);
+          const c = colorForType(n.type);
           return (
             <motion.div
-              key={notification.id}
+              key={n.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               whileHover={{ scale: 1.01, x: 4 }}
-              className={`bg-gradient-to-r ${notification.color} backdrop-blur-sm rounded-2xl p-5 border shadow-lg cursor-pointer ${
-                !notification.read ? 'ring-1 ring-indigo-500/30' : ''
-              }`}
+              className={`bg-gradient-to-r ${c.card} backdrop-blur-sm rounded-2xl p-5 border shadow-lg cursor-pointer ${!n.read ? 'ring-1 ring-indigo-500/30' : ''}`}
             >
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 ${notification.iconBg} backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                  <Icon className={`w-6 h-6 ${notification.iconColor}`} />
+                <div className={`w-12 h-12 ${c.iconBg} backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+                  <Icon className={`w-6 h-6 ${c.icon}`} />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-1">
-                    <h3 className="text-white font-semibold">{notification.title}</h3>
-                    {!notification.read && (
-                      <span className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0 mt-1.5 ml-2"></span>
+                    <h3 className="text-white font-semibold">{n.title}</h3>
+                    {!n.read && (
+                      <span className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0 mt-1.5 ml-2" />
                     )}
                   </div>
-                  <p className="text-slate-300 text-sm mb-2">{notification.message}</p>
-                  <p className="text-slate-500 text-xs">{notification.time}</p>
+                  <p className="text-slate-300 text-sm mb-2">{n.message}</p>
+                  <p className="text-slate-500 text-xs">{timeAgo(n.createdAt)}</p>
                 </div>
               </div>
             </motion.div>
           );
         })}
 
-        {notifications.length === 0 && (
+        {!loading && list.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="w-20 h-20 bg-slate-800/60 rounded-full flex items-center justify-center mb-4">
               <Bell className="w-10 h-10 text-slate-600" />
@@ -156,7 +130,7 @@ export default function NotificationsScreen() {
           </div>
         )}
 
-        <div className="h-4"></div>
+        <div className="h-4" />
       </div>
     </div>
   );

@@ -36,6 +36,16 @@ async function main() {
     update: {},
   });
 
+  await prisma.user.upsert({
+    where: { email: 'recruiter@hsbc.com' },
+    create: {
+      email: 'recruiter@hsbc.com',
+      passwordHash: await bcrypt.hash('recruiter123', 12),
+      role: 'RECRUITER',
+    },
+    update: {},
+  });
+
   await prisma.profile.upsert({
     where: { userId: gradUser.id },
     create: {
@@ -797,6 +807,7 @@ async function main() {
   console.log('Demo accounts:');
   console.log('  Graduate:  student@cuhk.edu.hk / student123');
   console.log('  Admin:     admin@cuhk.edu.hk  / admin123456');
+  console.log('  Recruiter: recruiter@hsbc.com / recruiter123');
   console.log('─────────────────────────────────────────');
 }
 

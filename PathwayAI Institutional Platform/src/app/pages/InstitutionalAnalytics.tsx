@@ -2,6 +2,7 @@ import { TrendingUp, TrendingDown, Download, Mail, Calendar, Search, ChevronRigh
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect } from 'react';
 import { analytics, institution, type InstitutionAnalytics, type Programme, type GraduateOutcome, type InstitutionSnapshot, type ProgrammeSnapshot, type InstitutionInsight } from '../lib/api';
+import { useSSE } from '../lib/useSSE';
 
 export default function InstitutionalAnalytics() {
   const [selectedProgramme, setSelectedProgramme] = useState<string | null>(null);
@@ -31,6 +32,14 @@ export default function InstitutionalAnalytics() {
       setInstitutionInsights(ins);
     }).catch(console.error);
   }, []);
+
+  // Real-time: refresh outcomes table when a graduate accepts an offer
+  useSSE('/events/stream', (event) => {
+    if (event.type === 'OUTCOME_REPORTED') {
+      institution.outcomes().then(setOutcomes).catch(() => {});
+      analytics.institution().then(setAnalyticsData).catch(() => {});
+    }
+  });
 
   // A. Hero KPIs
   const heroKPIs = [

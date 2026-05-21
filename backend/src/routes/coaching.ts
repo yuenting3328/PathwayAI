@@ -745,10 +745,17 @@ export default async function coachRoutes(app: FastifyInstance) {
       if (docType) {
         const { filename, url, explanation } = await generateDocxFile(docType, sub);
         await persistMessages(sub, lastUserMsg, explanation);
+        await prisma.coachSession.create({
+          data: { userId: sub, type: 'career_advice', topic: lastUserMsg.slice(0, 80), summary: 'Document generated via coach chat.' },
+        });
         return { content: explanation, attachment: { filename, url } };
       }
       const content = getMockResponse(lastUserMsg, body.data.messages);
       await persistMessages(sub, lastUserMsg, content);
+      // Auto-log a session on every chat interaction so the institution can track coaching usage
+      await prisma.coachSession.create({
+        data: { userId: sub, type: 'career_advice', topic: lastUserMsg.slice(0, 80), summary: content.slice(0, 200) },
+      });
       return { content };
     }
 

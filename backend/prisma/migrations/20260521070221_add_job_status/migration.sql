@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Job" ADD COLUMN     "jobStatus" TEXT NOT NULL DEFAULT 'OPEN';

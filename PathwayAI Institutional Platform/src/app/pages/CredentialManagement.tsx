@@ -1,14 +1,51 @@
-import { Award, Share2, CheckCircle, Download, TrendingUp, ExternalLink, Calendar, FileCheck } from 'lucide-react';
+import { Award, Share2, CheckCircle, Download, TrendingUp, ExternalLink, Calendar, FileCheck, Plus, Search, X } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { useEffect, useState } from 'react';
-import { institution, type IssuedCredential } from '../lib/api';
+import { institution, graduates, type IssuedCredential, type GraduateSearchResult } from '../lib/api';
 
 export default function CredentialManagement() {
   const [credentials, setCredentials] = useState<IssuedCredential[]>([]);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GraduateSearchResult[]>([]);
+  const [selectedGraduate, setSelectedGraduate] = useState<GraduateSearchResult | null>(null);
+  const [issueType, setIssueType] = useState('HEAR');
+  const [issueName, setIssueName] = useState('');
+  const [issuing, setIssuing] = useState(false);
 
   useEffect(() => {
     institution.credentials().then(setCredentials).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (searchQuery.length < 2) { setSearchResults([]); return; }
+    const timer = setTimeout(() => {
+      graduates.search(searchQuery).then(setSearchResults).catch(() => setSearchResults([]));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleIssue = async () => {
+    if (!selectedGraduate || !issueName) return;
+    setIssuing(true);
+    try {
+      const issued = await institution.issueCredential({
+        recipientRef: selectedGraduate.email,
+        graduateUserId: selectedGraduate.userId,
+        type: issueType,
+        name: issueName,
+      });
+      setCredentials(prev => [issued, ...prev]);
+      setShowIssueModal(false);
+      setSelectedGraduate(null);
+      setSearchQuery('');
+      setIssueName('');
+    } catch {
+      // keep modal open on error
+    } finally {
+      setIssuing(false);
+    }
+  };
 
   const issued = credentials.filter((c: IssuedCredential) => c.status === 'VERIFIED').length;
   const pending = credentials.filter((c: IssuedCredential) => c.status === 'PENDING').length;
@@ -83,6 +120,13 @@ export default function CredentialManagement() {
           <button className="h-10 px-4 border border-[#AAACEF] rounded-lg text-[14px] hover:bg-accent transition-colors flex items-center gap-2 text-[#6366F1]">
             <Calendar className="w-4 h-4" />
             Last 6 Months
+          </button>
+          <button
+            onClick={() => setShowIssueModal(true)}
+            className="h-10 px-5 bg-[#6366F1] text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Issue Credential
           </button>
           <button className="h-10 px-6 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2">
             <Download className="w-4 h-4" />
@@ -369,6 +413,104 @@ export default function CredentialManagement() {
           </div>
         </div>
       </div>
+
+      {/* Issue Credential Modal */}
+      {showIssueModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-[18px] font-semibold text-foreground">Issue New Credential</h3>
+              <button onClick={() => setShowIssueModal(false)} className="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Graduate search */}
+            <div className="mb-4">
+              <label className="text-[13px] font-medium text-foreground mb-1.5 block">Recipient</label>
+              {selectedGraduate ? (
+                <div className="flex items-center justify-between bg-[#6366F1]/10 border border-[#6366F1]/30 rounded-lg px-3 py-2">
+                  <div>
+                    <p className="text-[14px] text-foreground font-medium">{selectedGraduate.name}</p>
+                    <p className="text-[12px] text-muted-foreground">{selectedGraduate.email}{selectedGraduate.faculty ? ` · ${selectedGraduate.faculty}` : ''}</p>
+                  </div>
+                  <button onClick={() => setSelectedGraduate(null)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by name or email…"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-[14px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#6366F1]"
+                  />
+                  {searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-10 overflow-hidden">
+                      {searchResults.map(g => (
+                        <button
+                          key={g.userId}
+                          onClick={() => { setSelectedGraduate(g); setSearchQuery(''); setSearchResults([]); }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border last:border-0"
+                        >
+                          <p className="text-[14px] text-foreground">{g.name}</p>
+                          <p className="text-[12px] text-muted-foreground">{g.email}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Credential type */}
+            <div className="mb-4">
+              <label className="text-[13px] font-medium text-foreground mb-1.5 block">Type</label>
+              <select
+                value={issueType}
+                onChange={e => setIssueType(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-[14px] text-foreground focus:outline-none focus:border-[#6366F1]"
+              >
+                <option value="HEAR">HEAR</option>
+                <option value="DEGREE">Degree</option>
+                <option value="MICRO_CREDENTIAL">Micro-Credential</option>
+                <option value="BADGE">Digital Badge</option>
+              </select>
+            </div>
+
+            {/* Credential name */}
+            <div className="mb-5">
+              <label className="text-[13px] font-medium text-foreground mb-1.5 block">Credential Name</label>
+              <input
+                type="text"
+                placeholder="e.g. BSc Computer Science 2024"
+                value={issueName}
+                onChange={e => setIssueName(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-[14px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#6366F1]"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowIssueModal(false)}
+                className="flex-1 h-10 border border-border rounded-lg text-[14px] text-muted-foreground hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleIssue}
+                disabled={!selectedGraduate || !issueName || issuing}
+                className="flex-1 h-10 bg-[#6366F1] text-white rounded-lg text-[14px] font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              >
+                {issuing ? 'Issuing…' : 'Issue Credential'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

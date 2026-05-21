@@ -46,7 +46,7 @@ export const institution = {
   },
   programmes: () => api.get<Programme[]>('/institution/programmes'),
   credentials: () => api.get<IssuedCredential[]>('/institution/credentials'),
-  issueCredential: (data: { recipientRef: string; type: string; name: string }) =>
+  issueCredential: (data: { recipientRef: string; graduateUserId?: string; type: string; name: string }) =>
     api.post<IssuedCredential>('/institution/credentials', data),
   snapshots: () => api.get<InstitutionSnapshot[]>('/institution/snapshots'),
   programmeSnapshots: () => api.get<ProgrammeSnapshot[]>('/institution/programme-snapshots'),
@@ -55,6 +55,12 @@ export const institution = {
   salaryStages: () => api.get<AlumniSalaryStage[]>('/institution/salary-stages'),
   engagement: () => api.get<AlumniEngagement[]>('/institution/engagement'),
   coachingMetrics: () => api.get<CoachingWeekMetric[]>('/institution/coaching-metrics'),
+};
+
+// Graduate lookup — used by Institution when issuing credentials
+export const graduates = {
+  search: (q: string) =>
+    api.get<GraduateSearchResult[]>(`/institution/graduates/search?q=${encodeURIComponent(q)}`),
 };
 
 // Analytics
@@ -107,6 +113,14 @@ export interface Profile {
   university?: string;
 }
 
+export interface GraduateSearchResult {
+  userId: string;
+  name: string;
+  email: string;
+  faculty?: string;
+  cohortYear?: number;
+}
+
 export interface GraduateOutcome {
   id: string;
   cohortRef: string;
@@ -149,6 +163,7 @@ export interface InstitutionAnalytics {
   employerPartners: number;
   totalJobPostings: number;
   totalPlacements: number;
+  totalApplications: number;
   sectorBreakdown: Record<string, number>;
   alumniCount: number;
   coachingSessionCount: number;

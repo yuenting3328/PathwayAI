@@ -50,7 +50,7 @@ export default function MarketIntelligence() {
     { label: 'Active Job Postings', value: totalJobCount ? totalJobCount.toLocaleString() : '—', change: 'Across all districts', icon: Briefcase, color: '#0EA5E9' },
   ];
 
-  const sortedCompetency = [...competencyFeedback].sort((a, b) => a.gap - b.gap);
+  const sortedCompetency = [...competencyFeedback].sort((a, b) => b.gap - a.gap);
 
   return (
     <div className="space-y-6">

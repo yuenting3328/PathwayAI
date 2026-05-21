@@ -26,6 +26,14 @@ export default async function jobRoutes(app: FastifyInstance) {
     }
 
     const { sub } = request.user as { sub: string };
+
+    // Exclude jobs the user has already applied to
+    const appliedJobIds = (await prisma.application.findMany({
+      where: { userId: sub },
+      select: { jobId: true },
+    })).map((a) => a.jobId);
+    if (appliedJobIds.length) where.id = { notIn: appliedJobIds };
+
     const [jobs, total] = await Promise.all([
       prisma.job.findMany({
         where,

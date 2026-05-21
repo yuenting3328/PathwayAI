@@ -1,4 +1,4 @@
-import { ArrowLeft, Briefcase, Clock, CheckCircle2, XCircle, Calendar, Building2, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Briefcase, Clock, CheckCircle2, XCircle, Calendar, Building2, TrendingUp, Star } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -10,7 +10,7 @@ export default function ApplicationsScreen() {
   const { t } = useLanguage();
 
   const [appList, setAppList] = useState<Application[]>([]);
-  const [stats, setStats] = useState<AppStats>({ total: 0, pending: 0, interviews: 0, offers: 0, rejected: 0 });
+  const [stats, setStats] = useState<AppStats>({ total: 0, pending: 0, shortlisted: 0, interviews: 0, offers: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -96,11 +96,11 @@ export default function ApplicationsScreen() {
 
           <motion.div
             whileHover={{ scale: 1.02, y: -2 }}
-            className="bg-gradient-to-br from-amber-500/20 to-orange-500/10 backdrop-blur-sm rounded-xl p-4 border border-amber-500/30 shadow-lg"
+            className="bg-gradient-to-br from-sky-500/20 to-cyan-500/10 backdrop-blur-sm rounded-xl p-4 border border-sky-500/30 shadow-lg"
           >
-            <Clock className="w-5 h-5 text-amber-400 mb-2" />
-            <p className="text-2xl font-bold text-white">{stats.pending}</p>
-            <p className="text-xs text-slate-400">{t('Pending', '待審')}</p>
+            <Star className="w-5 h-5 text-sky-400 mb-2" />
+            <p className="text-2xl font-bold text-white">{stats.shortlisted}</p>
+            <p className="text-xs text-slate-400">{t('Shortlisted', '入圍')}</p>
           </motion.div>
 
           <motion.div
@@ -176,9 +176,10 @@ export default function ApplicationsScreen() {
 
                       <div className="flex items-center justify-between">
                         <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${
-                          app.status === 'INTERVIEW' ? 'bg-emerald-500/20 text-emerald-300' :
-                          app.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                          app.status === 'OFFERED' ? 'bg-purple-500/20 text-purple-300' :
+                          app.stage === 'Shortlisted'   ? 'bg-sky-500/20 text-sky-300' :
+                          app.status === 'INTERVIEW'    ? 'bg-emerald-500/20 text-emerald-300' :
+                          app.status === 'PENDING'      ? 'bg-amber-500/20 text-amber-300' :
+                          app.status === 'OFFERED'      ? 'bg-purple-500/20 text-purple-300' :
                           'bg-slate-500/20 text-slate-300'
                         }`}>
                           {app.stage}

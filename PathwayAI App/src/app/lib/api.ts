@@ -4,10 +4,10 @@ export function getToken(): string | null {
   return localStorage.getItem('pathwayai_token');
 }
 
-export function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(withBody = true): Record<string, string> {
   const token = getToken();
   return {
-    'Content-Type': 'application/json',
+    ...(withBody ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
@@ -17,7 +17,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -50,6 +50,7 @@ export const auth = {
     api.post<{ token: string; refreshToken: string; user: User }>('/auth/register', { email, password }),
   me: () => api.get<User & { profile: Profile | null }>('/auth/me'),
   updateProfile: (data: Partial<Profile>) => api.patch<Profile>('/auth/me/profile', data),
+  transitionToAlumni: () => api.post<{ token: string; user: User }>('/auth/alumni-transition', {}),
 };
 
 // Jobs
@@ -74,6 +75,18 @@ export const applications = {
   withdraw: (id: string) => api.delete<{ success: boolean }>(`/applications/${id}`),
 };
 
+// Outcomes — reports accepted offers back to Institution
+export const outcomes = {
+  report: (data: {
+    applicationId: string;
+    company: string;
+    role: string;
+    sector?: string;
+    salaryBand?: string;
+    geography?: string;
+  }) => api.post<{ id: string }>('/outcomes', data),
+};
+
 // Skills
 export const skills = {
   list: () => api.get<UserSkill[]>('/skills'),
@@ -87,6 +100,8 @@ export const credentials = {
   list: () => api.get<Credential[]>('/credentials'),
   submit: (data: { category: string; name: string; issuer: string; fileUrl?: string }) =>
     api.post<Credential>('/credentials', data),
+  shareLink: (id: string, expiryDays: number | null) =>
+    api.post<{ url: string }>(`/credentials/${id}/share`, { expiryDays }),
 };
 
 export interface ChatMessage {
@@ -137,6 +152,16 @@ export const market = {
   },
   signal: (id: string) => api.get<MarketSignal>(`/market/signals/${id}`),
   salary: () => api.get<SalaryBenchmark[]>('/market/salary'),
+  sectorTrends: () => api.get<SectorTrend[]>('/market/sector-trends'),
+  districtSalaries: () => api.get<DistrictSalaryBenchmark[]>('/market/district-salaries'),
+  skillsShortage: () => api.get<SkillShortage[]>('/market/skills-shortage'),
+  demandForecast: () => api.get<DemandForecast[]>('/market/demand-forecast'),
+};
+
+// Notifications
+export const notifications = {
+  list: () => api.get<Notification[]>('/notifications'),
+  markAllRead: () => api.patch<{ success: boolean }>('/notifications/mark-read', {}),
 };
 
 // Token management
@@ -158,7 +183,7 @@ export function isLoggedIn(): boolean {
 export interface User {
   id: string;
   email: string;
-  role: 'GRADUATE' | 'ADVISOR' | 'INSTITUTION_ADMIN' | 'SUPER_ADMIN';
+  role: 'GRADUATE' | 'ALUMNI' | 'ADVISOR' | 'INSTITUTION_ADMIN' | 'RECRUITER' | 'SUPER_ADMIN';
 }
 
 export interface Profile {
@@ -226,6 +251,7 @@ export interface ApplicationDetail extends Omit<Application, 'job'> {
 export interface AppStats {
   total: number;
   pending: number;
+  shortlisted: number;
   interviews: number;
   offers: number;
   rejected: number;
@@ -335,4 +361,49 @@ export interface SalaryBenchmark {
   sector: string;
   avgMin: number;
   avgMax: number;
+}
+
+export interface SectorTrend {
+  quarter: string;
+  finance?: number;
+  tech?: number;
+  healthcare?: number;
+  education?: number;
+  professional?: number;
+}
+
+export interface DistrictSalaryBenchmark {
+  id: string;
+  district: string;
+  median: number;
+  q1Salary: number;
+  q3Salary: number;
+  jobCount: number;
+  year: number;
+}
+
+export interface SkillShortage {
+  id: string;
+  skill: string;
+  shortage: number;
+  demandGrowth: number;
+  salaryPremium: number;
+  supply: number;
+}
+
+export interface DemandForecast {
+  id: string;
+  month: string;
+  actual: number | null;
+  forecast: number;
+  historical: number;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
 }

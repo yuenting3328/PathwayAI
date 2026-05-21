@@ -87,13 +87,39 @@ export default async function marketRoutes(app: FastifyInstance) {
 
   // GET /api/v1/market/competency-feedback
   app.get('/competency-feedback', { preHandler: [app.authenticate] }, async (request, reply) => {
-    const instId = await getInstitutionId(request, reply);
-    if (!instId) return;
+    const { sub, role } = request.user as { sub: string; role: string };
+
+    let institutionId: string | null = null;
+
+    if (['INSTITUTION_ADMIN', 'SUPER_ADMIN'].includes(role)) {
+      institutionId = await getInstitutionId(request, reply);
+      if (!institutionId) return;
+    } else if (role === 'RECRUITER') {
+      // Resolve institution via employer email domain relationship
+      const user = await prisma.user.findUnique({ where: { id: sub } });
+      const domain = user?.email.split('@')[1];
+      const companySlug = domain?.split('.')[0] ?? '';
+      const employer = await prisma.employer.findFirst({
+        where: { name: { contains: companySlug, mode: 'insensitive' } },
+        include: { relationships: { select: { institutionId: true }, take: 1 } },
+      });
+      const instId = employer?.relationships[0]?.institutionId;
+      if (!instId) {
+        const first = await prisma.institution.findFirst();
+        if (!first) return reply.status(400).send({ error: 'No institution available' });
+        institutionId = first.id;
+      } else {
+        institutionId = instId;
+      }
+    } else {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+
     const rows = await prisma.competencyFeedback.findMany({
-      where: { institutionId: instId },
+      where: { institutionId },
       orderBy: { competency: 'asc' },
     });
-    return rows.map(r => ({ ...r, gap: r.current - r.desired }));
+    return rows.map(r => ({ ...r, gap: r.desired - r.current }));
   });
 
   // GET /api/v1/market/demand-forecast
@@ -104,6 +130,57 @@ export default async function marketRoutes(app: FastifyInstance) {
       where: { institutionId: instId },
       orderBy: [{ year: 'asc' }, { monthOrder: 'asc' }],
     });
+  });
+
+  // POST /api/v1/market/competency-feedback — recruiter or admin submits competency ratings
+  app.post('/competency-feedback', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { sub, role } = request.user as { sub: string; role: string };
+
+    const schema = z.object({
+      competency: z.string().min(1),
+      current: z.number().min(0).max(10),
+      desired: z.number().min(0).max(10),
+    });
+    const body = schema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
+
+    let institutionId: string;
+    let employerId: string | null = null;
+
+    if (['INSTITUTION_ADMIN', 'SUPER_ADMIN'].includes(role)) {
+      const user = await prisma.user.findUnique({ where: { id: sub } });
+      if (!user?.institutionId) return reply.status(400).send({ error: 'No institution linked' });
+      institutionId = user.institutionId;
+    } else if (role === 'RECRUITER') {
+      const user = await prisma.user.findUnique({ where: { id: sub } });
+      // Resolve institution via employer relationship using email domain
+      const domain = user?.email.split('@')[1];
+      const companySlug = domain?.split('.')[0] ?? '';
+      const employer = await prisma.employer.findFirst({
+        where: { name: { contains: companySlug, mode: 'insensitive' } },
+        include: { relationships: { select: { institutionId: true }, take: 1 } },
+      });
+      if (employer) employerId = employer.id;
+      const instId = employer?.relationships[0]?.institutionId;
+      if (!instId) {
+        // Fall back to the first available institution
+        const first = await prisma.institution.findFirst();
+        if (!first) return reply.status(400).send({ error: 'No institution available' });
+        institutionId = first.id;
+      } else {
+        institutionId = instId;
+      }
+    } else {
+      return reply.status(403).send({ error: 'Forbidden' });
+    }
+
+    const year = new Date().getFullYear();
+    const feedback = await prisma.competencyFeedback.upsert({
+      where: { institutionId_competency_year: { institutionId, competency: body.data.competency, year } },
+      create: { institutionId, employerId, year, ...body.data },
+      update: { current: body.data.current, desired: body.data.desired, employerId },
+    });
+    return reply.status(201).send({ ...feedback, gap: feedback.desired - feedback.current });
   });
 
   // GET /api/v1/market/top-employers — top hiring employers by placements

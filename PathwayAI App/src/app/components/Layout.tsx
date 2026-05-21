@@ -1,11 +1,12 @@
 import { Home, Briefcase, MessageCircle, User, Bell, Search, Filter, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import SettingsMenu from './SettingsMenu';
 import pathwayLogo from '../../imports/PathwayAI_logo.png';
+import { notifications as notifApi } from '../lib/api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,13 @@ export default function Layout({ children, onFilterClick }: LayoutProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    notifApi.list()
+      .then(list => setUnreadCount(list.filter(n => !n.read).length))
+      .catch(() => {});
+  }, [location.pathname]);
 
   const displayName = user?.profile?.name ?? user?.email?.split('@')[0] ?? 'You';
   const initials = displayName.charAt(0).toUpperCase();
@@ -88,11 +96,13 @@ export default function Layout({ children, onFilterClick }: LayoutProps) {
                   className="relative"
                 >
                   <Bell className="w-6 h-6 text-slate-400 hover:text-slate-300 transition-colors" />
-                  <motion.span
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"
-                  ></motion.span>
+                  {unreadCount > 0 && (
+                    <motion.span
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"
+                    />
+                  )}
                 </motion.button>
               </Link>
             </div>
@@ -129,11 +139,13 @@ export default function Layout({ children, onFilterClick }: LayoutProps) {
                   className="relative"
                 >
                   <Bell className="w-6 h-6 text-slate-400 hover:text-slate-300 transition-colors" />
-                  <motion.span
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"
-                  ></motion.span>
+                  {unreadCount > 0 && (
+                    <motion.span
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"
+                    />
+                  )}
                 </motion.button>
               </Link>
             </div>
@@ -161,11 +173,13 @@ export default function Layout({ children, onFilterClick }: LayoutProps) {
                   className="relative"
                 >
                   <Bell className="w-6 h-6 text-slate-400 hover:text-slate-300 transition-colors" />
-                  <motion.span
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"
-                  />
+                  {unreadCount > 0 && (
+                    <motion.span
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"
+                    />
+                  )}
                 </motion.button>
               </Link>
             </div>

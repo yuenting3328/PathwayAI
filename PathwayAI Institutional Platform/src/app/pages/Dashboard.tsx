@@ -1,7 +1,8 @@
-import { TrendingUp, TrendingDown, Users, Award, Target, Building2, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Award, Target, Building2, AlertCircle, ArrowUpRight, Briefcase, FileText } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { useEffect, useState } from 'react';
 import { analytics, institution, employers, market, type InstitutionAnalytics, type Programme, type EmployerRelationship, type InstitutionSnapshot, type SkillShortage } from '../lib/api';
+import { useSSE } from '../lib/useSSE';
 
 export default function Dashboard() {
   const [analyticsData, setAnalyticsData] = useState<InstitutionAnalytics | null>(null);
@@ -10,7 +11,7 @@ export default function Dashboard() {
   const [snapshots, setSnapshots] = useState<InstitutionSnapshot[]>([]);
   const [skillShortages, setSkillShortages] = useState<SkillShortage[]>([]);
 
-  useEffect(() => {
+  const loadAnalytics = () => {
     Promise.all([
       analytics.institution().catch(() => null),
       institution.programmes().catch(() => []),
@@ -24,13 +25,22 @@ export default function Dashboard() {
       setSnapshots(sn);
       setSkillShortages(ss);
     });
-  }, []);
+  };
+
+  useEffect(() => { loadAnalytics(); }, []);
+
+  // Real-time: refresh KPIs when a graduate accepts an offer (outcome reported)
+  useSSE('/events/stream', (event) => {
+    if (event.type === 'OUTCOME_REPORTED') {
+      analytics.institution().then(setAnalyticsData).catch(() => {});
+    }
+  });
 
   const kpiData = [
     { label: 'Graduate Employment Rate', value: analyticsData ? `${analyticsData.employmentRate}%` : '—', change: '+2.3%', trend: 'up', icon: Users, color: '#6366F1' },
     { label: 'HEAR Credentials Issued', value: analyticsData ? analyticsData.credentialsIssued.toLocaleString() : '—', change: '+458', trend: 'up', icon: Award, color: '#0EA5E9' },
-    { label: 'Active Employer Partners', value: analyticsData ? String(analyticsData.employerPartners) : '—', change: '+28', trend: 'up', icon: Building2, color: '#34D399' },
-    { label: 'Total Placements', value: analyticsData ? String(analyticsData.totalPlacements) : '—', change: '', trend: 'up', icon: Target, color: '#FBBF24' },
+    { label: 'Total Job Postings', value: analyticsData ? analyticsData.totalJobPostings.toLocaleString() : '—', change: '', trend: 'up', icon: Briefcase, color: '#34D399' },
+    { label: 'Total Applications', value: analyticsData ? analyticsData.totalApplications.toLocaleString() : '—', change: '', trend: 'up', icon: FileText, color: '#FBBF24' },
   ];
 
   // Employment trends — annual from InstitutionSnapshot

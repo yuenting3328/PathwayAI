@@ -13,12 +13,13 @@ import {
   Wrench,
   FileText,
   TrendingUp,
+  PartyPopper,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { applications as appsApi, type ApplicationDetail } from '../lib/api';
+import { applications as appsApi, outcomes, type ApplicationDetail } from '../lib/api';
 
 export default function ApplicationDetailScreen() {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ export default function ApplicationDetailScreen() {
   const [app, setApp] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -37,6 +40,28 @@ export default function ApplicationDetailScreen() {
       .catch(() => setError(t('Application not found', '找不到申請記錄')))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleAcceptOffer = async () => {
+    if (!app || !id) return;
+    setAccepting(true);
+    try {
+      await outcomes.report({
+        applicationId: id,
+        company: app.job?.company ?? '',
+        role: app.job?.title ?? '',
+        sector: app.job?.sector,
+        salaryBand: app.job?.salaryMin != null
+          ? `${app.job.salaryMin}-${app.job.salaryMax}`
+          : undefined,
+        geography: app.job?.district,
+      });
+      setAccepted(true);
+    } catch {
+      // non-critical — outcome sync failure shouldn't block the user
+    } finally {
+      setAccepting(false);
+    }
+  };
 
   const getStatusConfig = (status: ApplicationDetail['status']) => {
     switch (status) {
@@ -156,6 +181,41 @@ export default function ApplicationDetailScreen() {
                   </span>
                 </div>
               </motion.div>
+
+              {/* Accept Offer */}
+              {app.status === 'OFFERED' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03 }}
+                  className="bg-gradient-to-r from-purple-500/20 to-indigo-500/10 border border-purple-500/30 rounded-2xl p-5"
+                >
+                  {accepted ? (
+                    <div className="flex items-center gap-3 text-purple-300">
+                      <PartyPopper className="w-5 h-5 flex-shrink-0" />
+                      <p className="text-sm font-medium">
+                        {t('Offer accepted — outcome reported to your institution.', '已接受邀請，結果已同步至大學。')}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-slate-300 text-sm mb-3">
+                        {t('Accepting this offer will report your placement outcome to your institution so they can track graduate employment.', '接受此邀請後，你的就業結果將同步至大學，用於畢業生就業追蹤。')}
+                      </p>
+                      <button
+                        onClick={handleAcceptOffer}
+                        disabled={accepting}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                      >
+                        <PartyPopper className="w-4 h-4" />
+                        {accepting
+                          ? t('Reporting…', '同步中…')
+                          : t('Accept Offer & Report Outcome', '接受邀請並上報結果')}
+                      </button>
+                    </>
+                  )}
+                </motion.div>
+              )}
 
               {/* Key info grid */}
               <motion.div

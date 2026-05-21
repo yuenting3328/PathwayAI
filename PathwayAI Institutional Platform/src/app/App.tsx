@@ -22,8 +22,7 @@ import {
 } from 'lucide-react';
 
 // Import logo
-import PathwayLogo from '../imports/PathwayAI_Logo.png';
-import InstitutionalLogo from '../imports/PathwayAI_Institutional_Logo.svg';
+import InstitutionalLogo from '../imports/Institutional_Logo.svg';
 import LoginBg from '../imports/login_bg.jpg';
 
 // Import all page components
@@ -87,8 +86,8 @@ export default function App() {
         style={{ backgroundImage: `url(${LoginBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         <form onSubmit={handleLogin} className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 w-full max-w-sm space-y-4 shadow-2xl">
-          <div className="flex justify-center">
-            <img src={InstitutionalLogo} alt="PathwayAI Institutional" className="h-12 object-contain" />
+          <div className="flex items-center justify-center">
+            <img src={InstitutionalLogo} alt="Talent Hub" className="h-12 object-contain" />
           </div>
           <p className="text-white/60 text-sm text-center">Sign in to your admin account</p>
           {loginError && <p className="text-[#F43F5E] text-sm">{loginError}</p>}
@@ -178,8 +177,8 @@ function Sidebar({ activeView, onViewChange }: { activeView: string; onViewChang
   return (
     <aside className="w-[280px] bg-sidebar border-r border-sidebar-border flex flex-col fixed left-0 top-0 h-screen">
       {/* Logo */}
-      <div className="h-16 px-6 flex items-center border-b border-sidebar-border">
-        <img src={PathwayLogo} alt="PathwayAI" className="h-10" />
+      <div className="h-16 px-6 flex items-center gap-3 border-b border-sidebar-border">
+        <img src={InstitutionalLogo} alt="Talent Hub" className="h-9 object-contain" />
       </div>
 
       {/* Navigation */}

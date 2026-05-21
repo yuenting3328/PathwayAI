@@ -102,6 +102,20 @@ export default async function authRoutes(app: FastifyInstance) {
     return safe;
   });
 
+  // POST /api/v1/auth/alumni-transition — graduate self-promotes to ALUMNI
+  app.post('/alumni-transition', { preHandler: [app.authenticate] }, async (request, reply) => {
+    const { sub, role } = request.user as { sub: string; role: string };
+    if (role !== 'GRADUATE') {
+      return reply.status(400).send({ error: 'Only GRADUATE accounts can transition to ALUMNI' });
+    }
+    const user = await prisma.user.update({
+      where: { id: sub },
+      data: { role: 'ALUMNI' },
+    });
+    const token = app.jwt.sign({ sub: user.id, role: user.role, email: user.email });
+    return { token, user: { id: user.id, email: user.email, role: user.role } };
+  });
+
   app.patch('/me/profile', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { sub } = request.user as { sub: string };
     const schema = z.object({

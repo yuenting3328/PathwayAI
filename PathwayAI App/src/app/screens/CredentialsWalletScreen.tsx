@@ -1,9 +1,10 @@
-import { ArrowLeft, Award, Share2, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Award, Share2, CheckCircle, Clock, Copy, Building2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { credentials as credApi, type Credential } from '../lib/api';
+import { useSSE } from '../lib/useSSE';
 
 export default function CredentialsWalletScreen() {
   const navigate = useNavigate();
@@ -11,10 +12,49 @@ export default function CredentialsWalletScreen() {
   const [credList, setCredList] = useState<Credential[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<string | null>(null);
+  const [shareExpiry, setShareExpiry] = useState<number | null>(7);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     credApi.list().then(setCredList).catch(console.error);
   }, []);
+
+  // Real-time: refresh wallet when institution issues a new credential
+  useSSE<{ credentialId: string }>('/events/stream', (event) => {
+    if (event.type === 'CREDENTIAL_ISSUED') {
+      credApi.list().then(setCredList).catch(console.error);
+    }
+  });
+
+  const openShareModal = (id: string) => {
+    setSelectedCredential(id);
+    setGeneratedLink(null);
+    setCopied(false);
+    setShareExpiry(7);
+    setShowShareModal(true);
+  };
+
+  const handleGenerateLink = async () => {
+    if (!selectedCredential) return;
+    setGenerating(true);
+    try {
+      const { url } = await credApi.shareLink(selectedCredential, shareExpiry);
+      setGeneratedLink(url);
+    } catch {
+      setGeneratedLink(`${window.location.origin}/verify/${selectedCredential}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!generatedLink) return;
+    await navigator.clipboard.writeText(generatedLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -79,7 +119,13 @@ export default function CredentialsWalletScreen() {
                           <h4 className="text-white text-sm">{credential.name}</h4>
                           {getStatusIcon(credential.status)}
                         </div>
-                        <p className="text-slate-400 text-xs mb-2">{credential.issuer}</p>
+                        <p className="text-slate-400 text-xs mb-1">{credential.issuer}</p>
+                        {'issuedByInstitution' in credential && credential.issuedByInstitution && (
+                          <div className="flex items-center gap-1 mb-1">
+                            <Building2 className="w-3 h-3 text-indigo-400" />
+                            <span className="text-indigo-400 text-xs">{t('Issued by your university', '由大學頒發')}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-2 py-1 rounded ${getStatusColor(credential.status)}`}>
                             {t(credential.status, credential.status)}
@@ -94,10 +140,7 @@ export default function CredentialsWalletScreen() {
                     </div>
                     {credential.status === 'VERIFIED' && (
                       <button
-                        onClick={() => {
-                          setSelectedCredential(credential.id);
-                          setShowShareModal(true);
-                        }}
+                        onClick={() => openShareModal(credential.id)}
                         className="w-full mt-3 bg-[#334155] text-slate-300 py-2 rounded-lg text-sm flex items-center justify-center gap-2 hover:bg-[#6366F1] hover:text-white transition-colors"
                       >
                         <Share2 className="w-4 h-4" />
@@ -138,36 +181,64 @@ export default function CredentialsWalletScreen() {
               )}
             </p>
 
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-slate-300 text-sm mb-1 block">
-                  {t('Link expiry', '連結有效期')}
-                </label>
-                <select className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-white text-sm">
-                  <option>7 {t('days', '天')}</option>
-                  <option>30 {t('days', '天')}</option>
-                  <option>{t('No expiry', '永久')}</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowShareModal(false)}
-                className="flex-1 bg-[#334155] text-slate-300 py-2 rounded-lg text-sm"
-              >
-                {t('Cancel', '取消')}
-              </button>
-              <button
-                onClick={() => {
-                  setShowShareModal(false);
-                  alert(t('Link copied to clipboard!', '連結已複製！'));
-                }}
-                className="flex-1 bg-gradient-to-r from-[#6366F1] to-[#8b5cf6] text-white py-2 rounded-lg text-sm"
-              >
-                {t('Generate Link', '產生連結')}
-              </button>
-            </div>
+            {!generatedLink ? (
+              <>
+                <div className="mb-4">
+                  <label className="text-slate-300 text-sm mb-1 block">{t('Link expiry', '連結有效期')}</label>
+                  <select
+                    value={shareExpiry ?? ''}
+                    onChange={e => setShareExpiry(e.target.value === '' ? null : Number(e.target.value))}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-white text-sm"
+                  >
+                    <option value={7}>7 {t('days', '天')}</option>
+                    <option value={30}>30 {t('days', '天')}</option>
+                    <option value="">{ t('No expiry', '永久')}</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="flex-1 bg-[#334155] text-slate-300 py-2 rounded-lg text-sm"
+                  >
+                    {t('Cancel', '取消')}
+                  </button>
+                  <button
+                    onClick={handleGenerateLink}
+                    disabled={generating}
+                    className="flex-1 bg-gradient-to-r from-[#6366F1] to-[#8b5cf6] text-white py-2 rounded-lg text-sm disabled:opacity-50"
+                  >
+                    {generating ? t('Generating…', '生成中…') : t('Generate Link', '產生連結')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+                  <span className="text-slate-300 text-xs truncate flex-1">{generatedLink}</span>
+                  <button onClick={handleCopy} className="flex-shrink-0">
+                    <Copy className="w-4 h-4 text-slate-400 hover:text-white transition-colors" />
+                  </button>
+                </div>
+                {copied && (
+                  <p className="text-[#34D399] text-xs mb-3 text-center">{t('Copied to clipboard!', '已複製！')}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="flex-1 bg-[#334155] text-slate-300 py-2 rounded-lg text-sm"
+                  >
+                    {t('Done', '完成')}
+                  </button>
+                  <button
+                    onClick={handleCopy}
+                    className="flex-1 bg-gradient-to-r from-[#6366F1] to-[#8b5cf6] text-white py-2 rounded-lg text-sm flex items-center justify-center gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    {copied ? t('Copied!', '已複製！') : t('Copy Link', '複製連結')}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

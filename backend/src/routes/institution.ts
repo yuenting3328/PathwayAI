@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../index.js';
+import { emit } from '../events.js';
 
 export default async function institutionRoutes(app: FastifyInstance) {
   const requireAdmin = async (request: any, reply: any) => {
@@ -66,16 +67,89 @@ export default async function institutionRoutes(app: FastifyInstance) {
 
     const schema = z.object({
       recipientRef: z.string(),
+      graduateUserId: z.string().optional(),
       type: z.string(),
       name: z.string(),
     });
     const body = schema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: body.error.flatten() });
 
+    const { graduateUserId, ...rest } = body.data;
+
     const credential = await prisma.issuedCredential.create({
-      data: { institutionId: user.institutionId!, status: 'PENDING', ...body.data },
+      data: {
+        institutionId: user.institutionId!,
+        status: 'VERIFIED',
+        issuedAt: new Date(),
+        graduateUserId: graduateUserId ?? null,
+        ...rest,
+      },
     });
+
+    // Bridge: if a specific graduate is named, add the credential to their wallet
+    if (graduateUserId) {
+      const institution = await prisma.institution.findUnique({ where: { id: user.institutionId! } });
+      // Map institution credential type values to the wallet category strings
+      const categoryMap: Record<string, string> = {
+        HEAR: 'HEAR',
+        DEGREE: 'Degree & Transcript',
+        MICRO_CREDENTIAL: 'Certificates',
+        BADGE: 'Badges',
+      };
+      const walletCategory = categoryMap[body.data.type] ?? body.data.type;
+      await prisma.userCredential.create({
+        data: {
+          userId: graduateUserId,
+          category: walletCategory,
+          name: body.data.name,
+          issuer: institution?.name ?? 'Institution',
+          status: 'VERIFIED',
+          issuedDate: new Date(),
+        },
+      });
+      emit({ type: 'CREDENTIAL_ISSUED', institutionId: user.institutionId!, graduateUserId, credentialId: credential.id });
+
+      await prisma.notification.create({
+        data: {
+          userId: graduateUserId,
+          type: 'CREDENTIAL_ISSUED',
+          title: 'Credential Verified',
+          message: `Your ${body.data.name} from ${institution?.name ?? 'your institution'} has been verified and added to your wallet.`,
+        },
+      });
+    }
+
     return reply.status(201).send(credential);
+  });
+
+  // GET /api/v1/institution/graduates/search — search graduates by name or email
+  app.get('/graduates/search', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { sub } = request.user as { sub: string };
+    const user = await prisma.user.findUnique({ where: { id: sub } });
+    if (!user?.institutionId) return reply.status(400).send({ error: 'No institution' });
+
+    const { q } = z.object({ q: z.string().min(1) }).parse(request.query);
+
+    const results = await prisma.user.findMany({
+      where: {
+        institutionId: user.institutionId,
+        role: { in: ['GRADUATE', 'ALUMNI'] },
+        OR: [
+          { email: { contains: q, mode: 'insensitive' } },
+          { profile: { name: { contains: q, mode: 'insensitive' } } },
+        ],
+      },
+      include: { profile: { select: { name: true, faculty: true, graduationYear: true } } },
+      take: 20,
+    });
+
+    return results.map((u) => ({
+      userId: u.id,
+      name: u.profile?.name ?? u.email.split('@')[0],
+      email: u.email,
+      faculty: u.profile?.faculty ?? undefined,
+      cohortYear: u.profile?.graduationYear ?? undefined,
+    }));
   });
 
   // GET /api/v1/institution/snapshots — 5-year employment trend

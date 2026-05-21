@@ -64,7 +64,7 @@ export default async function analyticsRoutes(app: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { id: sub } });
     if (!user?.institutionId) return reply.status(400).send({ error: 'No institution linked' });
 
-    const [outcomes, credentials, employers, alumniCount, coachingSessionCount] = await Promise.all([
+    const [outcomes, credentials, employers, alumniCount, coachingSessionCount, totalApplications] = await Promise.all([
       prisma.graduateOutcome.findMany({ where: { institutionId: user.institutionId } }),
       prisma.issuedCredential.findMany({ where: { institutionId: user.institutionId } }),
       prisma.employerRelationship.findMany({
@@ -73,6 +73,9 @@ export default async function analyticsRoutes(app: FastifyInstance) {
       }),
       prisma.user.count({ where: { institutionId: user.institutionId, role: 'GRADUATE' } }),
       prisma.coachSession.count({ where: { user: { institutionId: user.institutionId } } }),
+      prisma.application.count({
+        where: { user: { institutionId: user.institutionId } },
+      }),
     ]);
 
     const employed = outcomes.filter((o) => o.company);
@@ -91,6 +94,7 @@ export default async function analyticsRoutes(app: FastifyInstance) {
       employerPartners: employers.length,
       totalJobPostings: employers.reduce((acc, e) => acc + e.jobPostings, 0),
       totalPlacements: employers.reduce((acc, e) => acc + e.placements, 0),
+      totalApplications,
       sectorBreakdown,
       alumniCount,
       coachingSessionCount,
