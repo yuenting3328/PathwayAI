@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedAll(prisma: InstanceType<typeof PrismaClient>) {
   console.log('Seeding database...');
 
   // ── Institution ───────────────────────────────────────────────────────────
@@ -19,10 +17,10 @@ async function main() {
     create: {
       email: 'admin@cuhk.edu.hk',
       passwordHash: await bcrypt.hash('admin123456', 12),
-      role: 'INSTITUTION_ADMIN',
+      role: Role.INSTITUTION_ADMIN,
       institutionId: cuhk.id,
     },
-    update: {},
+    update: { role: Role.INSTITUTION_ADMIN },
   });
 
   const gradUser = await prisma.user.upsert({
@@ -30,20 +28,21 @@ async function main() {
     create: {
       email: 'student@cuhk.edu.hk',
       passwordHash: await bcrypt.hash('student123', 12),
-      role: 'GRADUATE',
+      role: Role.GRADUATE,
       institutionId: cuhk.id,
     },
-    update: {},
+    update: { role: Role.GRADUATE },
   });
 
+  const recruiterHash = await bcrypt.hash('recruiter123', 12);
   await prisma.user.upsert({
     where: { email: 'recruiter@hsbc.com' },
     create: {
       email: 'recruiter@hsbc.com',
-      passwordHash: await bcrypt.hash('recruiter123', 12),
-      role: 'RECRUITER',
+      passwordHash: recruiterHash,
+      role: Role.RECRUITER,
     },
-    update: {},
+    update: { passwordHash: recruiterHash, role: Role.RECRUITER },
   });
 
   await prisma.profile.upsert({
@@ -803,14 +802,16 @@ async function main() {
   }
 
   console.log('\nSeeding complete!');
-  console.log('─────────────────────────────────────────');
-  console.log('Demo accounts:');
   console.log('  Graduate:  student@cuhk.edu.hk / student123');
   console.log('  Admin:     admin@cuhk.edu.hk  / admin123456');
   console.log('  Recruiter: recruiter@hsbc.com / recruiter123');
-  console.log('─────────────────────────────────────────');
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+// Run directly: npx tsx prisma/seed.ts
+const isMain = process.argv[1]?.replace(/\\/g, '/').endsWith('prisma/seed.ts');
+if (isMain) {
+  const _prisma = new PrismaClient();
+  seedAll(_prisma)
+    .catch(console.error)
+    .finally(() => _prisma.$disconnect());
+}

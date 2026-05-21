@@ -8,25 +8,33 @@ export default function CredentialManagement() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GraduateSearchResult[]>([]);
+  const [searchError, setSearchError] = useState('');
   const [selectedGraduate, setSelectedGraduate] = useState<GraduateSearchResult | null>(null);
   const [issueType, setIssueType] = useState('HEAR');
   const [issueName, setIssueName] = useState('');
   const [issuing, setIssuing] = useState(false);
+  const [issueError, setIssueError] = useState('');
 
   useEffect(() => {
     institution.credentials().then(setCredentials).catch(console.error);
   }, []);
 
   useEffect(() => {
-    if (searchQuery.length < 2) { setSearchResults([]); return; }
+    if (searchQuery.length < 2) { setSearchResults([]); setSearchError(''); return; }
     const timer = setTimeout(() => {
-      graduates.search(searchQuery).then(setSearchResults).catch(() => setSearchResults([]));
+      graduates.search(searchQuery)
+        .then(r => { setSearchResults(r); setSearchError(r.length === 0 ? 'No graduates found' : ''); })
+        .catch((err: unknown) => {
+          setSearchResults([]);
+          setSearchError(err instanceof Error ? err.message : 'Search failed — check you are logged in');
+        });
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const handleIssue = async () => {
     if (!selectedGraduate || !issueName) return;
+    setIssueError('');
     setIssuing(true);
     try {
       const issued = await institution.issueCredential({
@@ -40,8 +48,8 @@ export default function CredentialManagement() {
       setSelectedGraduate(null);
       setSearchQuery('');
       setIssueName('');
-    } catch {
-      // keep modal open on error
+    } catch (err: unknown) {
+      setIssueError(err instanceof Error ? err.message : 'Failed to issue credential');
     } finally {
       setIssuing(false);
     }
@@ -453,7 +461,7 @@ export default function CredentialManagement() {
                       {searchResults.map(g => (
                         <button
                           key={g.userId}
-                          onClick={() => { setSelectedGraduate(g); setSearchQuery(''); setSearchResults([]); }}
+                          onClick={() => { setSelectedGraduate(g); setSearchQuery(''); setSearchResults([]); setSearchError(''); }}
                           className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border last:border-0"
                         >
                           <p className="text-[14px] text-foreground">{g.name}</p>
@@ -461,6 +469,9 @@ export default function CredentialManagement() {
                         </button>
                       ))}
                     </div>
+                  )}
+                  {searchError && searchQuery.length >= 2 && (
+                    <p className="mt-1.5 text-[12px] text-[#F43F5E]">{searchError}</p>
                   )}
                 </div>
               )}
@@ -493,9 +504,12 @@ export default function CredentialManagement() {
               />
             </div>
 
+            {issueError && (
+              <p className="mb-3 text-[12px] text-[#F43F5E]">{issueError}</p>
+            )}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowIssueModal(false)}
+                onClick={() => { setShowIssueModal(false); setIssueError(''); }}
                 className="flex-1 h-10 border border-border rounded-lg text-[14px] text-muted-foreground hover:bg-accent transition-colors"
               >
                 Cancel

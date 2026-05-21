@@ -23,7 +23,16 @@ export default function ApplicationsScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  const getStatusConfig = (status: Application['status']) => {
+  const getStatusConfig = (status: Application['status'], stage?: string) => {
+    // Shortlisted is tracked via stage (status stays PENDING)
+    if (stage === 'Shortlisted') {
+      return {
+        color: 'from-sky-500/20 to-cyan-500/10 border-sky-500/30',
+        icon: Star,
+        iconColor: 'text-sky-400',
+        label: t('Shortlisted', '入圍'),
+      };
+    }
     switch (status) {
       case 'INTERVIEW':
         return {
@@ -130,7 +139,7 @@ export default function ApplicationsScreen() {
             <div className="text-slate-400 text-center py-8">{t('No applications yet', '尚無申請')}</div>
           ) : (
             appList.map((app, idx) => {
-              const config = getStatusConfig(app.status);
+              const config = getStatusConfig(app.status, app.stage);
               const StatusIcon = config.icon;
               const company = app.job?.company ?? '';
               const position = app.job?.title ?? '';

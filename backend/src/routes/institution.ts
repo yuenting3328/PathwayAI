@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 import { prisma } from '../index.js';
 import { emit } from '../events.js';
 
@@ -133,7 +134,7 @@ export default async function institutionRoutes(app: FastifyInstance) {
     const results = await prisma.user.findMany({
       where: {
         institutionId: user.institutionId,
-        role: { in: ['GRADUATE', 'ALUMNI'] },
+        role: { in: [Role.GRADUATE, Role.ALUMNI] },
         OR: [
           { email: { contains: q, mode: 'insensitive' } },
           { profile: { name: { contains: q, mode: 'insensitive' } } },

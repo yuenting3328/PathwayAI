@@ -57,12 +57,14 @@ export default async function recruiterRoutes(app: FastifyInstance) {
     // Resolve company name from recruiter email domain
     const recruiter = await prisma.user.findUnique({ where: { id: sub } });
     const companySlug = recruiter?.email.split('@')[1]?.split('.')[0] ?? 'Company';
-    const company = companySlug.charAt(0).toUpperCase() + companySlug.slice(1);
 
-    // Optionally link to an Employer record if one exists for this company
+    // Prefer an exact Employer record match; otherwise title-case or uppercase short slugs
     const employer = await prisma.employer.findFirst({
       where: { name: { contains: companySlug, mode: 'insensitive' } },
     });
+    const company = employer?.name ?? (companySlug.length <= 5
+      ? companySlug.toUpperCase()
+      : companySlug.charAt(0).toUpperCase() + companySlug.slice(1));
 
     const job = await prisma.job.create({
       data: {

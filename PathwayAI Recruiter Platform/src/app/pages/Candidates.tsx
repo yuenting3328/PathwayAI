@@ -1,4 +1,4 @@
-import { GraduationCap, Star, Award, ChevronRight, X, CheckCircle, XCircle } from 'lucide-react';
+import { GraduationCap, Star, Award, ChevronRight, X, CheckCircle, XCircle, Calendar, Trophy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { candidates as candidatesApi, type CandidateApplication, type CandidateDetail } from '../lib/api';
 
@@ -182,26 +182,58 @@ export default function Candidates() {
 
               {/* Status actions */}
               <div>
-                <p className="text-[13px] font-semibold text-foreground mb-2">Move to Stage</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => selected.status !== 'SHORTLISTED' && updateStatus(selected.id, 'SHORTLISTED')}
-                    disabled={updating || selected.status === 'SHORTLISTED'}
-                    className="h-9 px-3 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-opacity hover:opacity-85 disabled:opacity-50 disabled:cursor-default"
-                    style={{ backgroundColor: '#34D399', color: '#fff' }}
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                    Shortlisted
-                  </button>
-                  <button
-                    onClick={() => selected.status !== 'REJECTED' && updateStatus(selected.id, 'REJECTED')}
-                    disabled={updating || selected.status === 'REJECTED'}
-                    className="h-9 px-3 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-opacity hover:opacity-85 disabled:opacity-50 disabled:cursor-default"
-                    style={{ backgroundColor: '#F43F5E', color: '#fff' }}
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    Reject
-                  </button>
+                <p className="text-[13px] font-semibold text-foreground mb-3">Move to Stage</p>
+                <div className="space-y-2">
+                  {/* Forward actions — show only the next logical step */}
+                  {selected.status === 'APPLIED' && (
+                    <button
+                      onClick={() => updateStatus(selected.id, 'SHORTLISTED')}
+                      disabled={updating}
+                      className="w-full h-10 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-85 disabled:opacity-50"
+                      style={{ backgroundColor: '#0EA5E9', color: '#fff' }}
+                    >
+                      <Star className="w-4 h-4" /> Shortlist Candidate
+                    </button>
+                  )}
+                  {selected.status === 'SHORTLISTED' && (
+                    <button
+                      onClick={() => updateStatus(selected.id, 'INTERVIEWING')}
+                      disabled={updating}
+                      className="w-full h-10 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-85 disabled:opacity-50"
+                      style={{ backgroundColor: '#FBBF24', color: '#000' }}
+                    >
+                      <Calendar className="w-4 h-4" /> Schedule Interview
+                    </button>
+                  )}
+                  {selected.status === 'INTERVIEWING' && (
+                    <button
+                      onClick={() => updateStatus(selected.id, 'OFFERED')}
+                      disabled={updating}
+                      className="w-full h-10 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-85 disabled:opacity-50"
+                      style={{ backgroundColor: '#34D399', color: '#000' }}
+                    >
+                      <Trophy className="w-4 h-4" /> Make Offer
+                    </button>
+                  )}
+                  {selected.status === 'OFFERED' && (
+                    <div className="w-full h-10 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-2 bg-[#34D399]/10 text-[#34D399] border border-[#34D399]/30">
+                      <CheckCircle className="w-4 h-4" /> Offer Extended
+                    </div>
+                  )}
+                  {/* Reject — always available unless already rejected/offered */}
+                  {!['REJECTED', 'OFFERED'].includes(selected.status) && (
+                    <button
+                      onClick={() => updateStatus(selected.id, 'REJECTED')}
+                      disabled={updating}
+                      className="w-full h-9 rounded-lg text-[13px] font-medium flex items-center justify-center gap-1.5 border border-[#F43F5E]/30 text-[#F43F5E] hover:bg-[#F43F5E]/10 transition-colors disabled:opacity-50"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Reject
+                    </button>
+                  )}
+                  {/* Current stage indicator */}
+                  <p className="text-[11px] text-muted-foreground text-center pt-1">
+                    Current stage: <span className="font-semibold" style={{ color: stageConfig[selected.status].color }}>{stageConfig[selected.status].label}</span>
+                  </p>
                 </div>
               </div>
             </div>

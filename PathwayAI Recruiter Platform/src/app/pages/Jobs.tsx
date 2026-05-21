@@ -19,6 +19,7 @@ export default function Jobs() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_JOB, skillInput: '' });
   const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'DRAFT' | 'CLOSED'>('ALL');
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
@@ -48,6 +49,7 @@ export default function Jobs() {
   const handleCreate = async () => {
     if (!form.title || !form.sector) return;
     setSaving(true);
+    setCreateError(null);
     try {
       const created = await jobsApi.create({
         title: form.title, sector: form.sector, district: form.district,
@@ -55,16 +57,12 @@ export default function Jobs() {
         deadline: form.deadline, skills: form.skills, description: form.description,
       });
       setJobList(prev => [created, ...prev]);
-    } catch {
-      setJobList(prev => [{
-        id: Date.now().toString(), title: form.title, sector: form.sector,
-        district: form.district, salaryMin: form.salaryMin, salaryMax: form.salaryMax,
-        deadline: form.deadline, status: 'DRAFT', applicantCount: 0, skills: form.skills,
-      }, ...prev]);
-    } finally {
-      setSaving(false);
       setShowModal(false);
       setForm({ ...EMPTY_JOB, skillInput: '' });
+    } catch (e: any) {
+      setCreateError(e.message ?? 'Failed to post job — please try again');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -187,7 +185,7 @@ export default function Jobs() {
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-[18px] font-semibold text-foreground">Post New Job</h3>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center">
+              <button onClick={() => { setShowModal(false); setCreateError(null); }} className="w-8 h-8 rounded-lg hover:bg-accent flex items-center justify-center">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
@@ -255,8 +253,11 @@ export default function Jobs() {
               </Field>
             </div>
 
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowModal(false)} className="flex-1 h-10 border border-border rounded-lg text-[14px] text-muted-foreground hover:bg-accent">Cancel</button>
+            {createError && (
+              <p className="mt-3 text-[13px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{createError}</p>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => { setShowModal(false); setCreateError(null); }} className="flex-1 h-10 border border-border rounded-lg text-[14px] text-muted-foreground hover:bg-accent">Cancel</button>
               <button onClick={handleCreate} disabled={!form.title || !form.sector || saving}
                 className="flex-1 h-10 bg-[#6366F1] text-white rounded-lg text-[14px] font-medium hover:opacity-90 disabled:opacity-40">
                 {saving ? 'Posting…' : 'Post Job'}

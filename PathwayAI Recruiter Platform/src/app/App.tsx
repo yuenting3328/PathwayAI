@@ -40,10 +40,21 @@ export default function App() {
     try {
       const { token, refreshToken } = await auth.login(loginEmail, loginPassword);
       saveTokens(token, refreshToken);
-      const u = await auth.me();
-      setUser(u);
-    } catch {
-      setLoginError('Invalid email or password');
+      try {
+        const u = await auth.me();
+        if (!['RECRUITER', 'SUPER_ADMIN'].includes(u.role)) {
+          clearTokens();
+          setLoginError('This account does not have recruiter access');
+          return;
+        }
+        setUser(u);
+      } catch {
+        clearTokens();
+        setLoginError('Account loaded but session setup failed — please try again');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setLoginError(msg.includes('401') || msg.toLowerCase().includes('invalid') ? 'Invalid email or password' : `Login failed: ${msg}`);
     }
   };
 

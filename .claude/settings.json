@@ -1,7 +1,38 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/waikw/AppData/Local/Temp/claude/e--Project-PathwayAI/448ecbc6-1759-43c7-a464-4091e28180a2/tasks/**)"
+      "Read(//c/Users/waikw/AppData/Local/Temp/claude/e--Project-PathwayAI/448ecbc6-1759-43c7-a464-4091e28180a2/tasks/**)",
+      "Bash(Get-ChildItem -Path \"e:\\\\Project\\\\PathwayAI\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(ls -la \"e:\\\\\\\\Project\\\\\\\\PathwayAI\")",
+      "Bash(find \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\backend\\\\\\\\src\\\\\\\\routes\" -type f -name \"*.ts\" -o -name \"*.js\")",
+      "Bash(find \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\PathwayAI App\\\\\\\\src\\\\\\\\app\\\\\\\\screens\" -type f -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(ls -la \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\PathwayAI Recruiter Platform\")",
+      "Bash(find \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\PathwayAI Recruiter Platform\" -type f -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(find \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\PathwayAI Institutional Platform\\\\\\\\src\\\\\\\\app\\\\\\\\pages\" -type f -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(grep -n \"shortlisted\\\\|Star\" \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\PathwayAI App\\\\\\\\src\\\\\\\\app\\\\\\\\screens\\\\\\\\ApplicationsScreen.tsx\")",
+      "Bash(grep -n \"Accept\\\\|report\\\\|outcome\" \"e:\\\\\\\\Project\\\\\\\\PathwayAI\\\\\\\\PathwayAI App\\\\\\\\src\\\\\\\\app\\\\\\\\screens\\\\\\\\ApplicationDetailScreen.tsx\")",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"recruiter@hsbc.com\",\"password\":\"recruiter123\"}')",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@cuhk.edu.hk\",\"password\":\"admin123456\"}')",
+      "Bash(npx dotenv *)",
+      "PowerShell(Set-Location \"e:\\\\Project\\\\PathwayAI\\\\backend\"; $env:DATABASE_URL = \"postgresql://neondb_owner:npg_Htl0oDkbr9Of@ep-square-bar-aob4bezw.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require\"; npx tsx prisma/seed.ts 2>&1 | Select-Object -Last 15)",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/_fix-demo)",
+      "Bash(curl -s http://localhost:4000/health)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"student@cuhk.edu.hk\",\"password\":\"student123\"}')",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/_fix-recruiter)",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"recruiter@hsbc.com\\\\\",\\\\\"password\\\\\":\\\\\"recruiter123\\\\\"}\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); p=d.get\\('accessToken',''\\); import base64; parts=p.split\\('.'\\); payload=parts[1]+'=='*4; print\\(json.dumps\\(json.loads\\(base64.urlsafe_b64decode\\(payload\\)\\), indent=2\\)\\) if len\\(parts\\)==3 else print\\(d\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('role:', d.get\\('user',{}\\).get\\('role','?'\\)\\)\")",
+      "Bash(node -e \"import\\('./node_modules/@prisma/client/default.js'\\).then\\(m => console.log\\('Role.RECRUITER =', m.Role?.RECRUITER ?? 'undefined'\\)\\)\")",
+      "Bash(node -e \"const {Role} = require\\('./node_modules/@prisma/client'\\); console.log\\('Role:', Role\\);\")",
+      "Bash(node --input-type=module -e \"import {Role} from './node_modules/.prisma/client/index.js'; console.log\\('RECRUITER:', Role.RECRUITER\\);\")",
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(curl -s http://localhost:4000/api/v1/_check-role-enum)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"student@cuhk.edu.hk\\\\\",\\\\\"password\\\\\":\\\\\"student123\\\\\"}\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('role:', d.get\\('user',{}\\).get\\('role','?'\\), 'token_len:', len\\(d.get\\('token',''\\)\\)\\)\")",
+      "Bash(python -c ' *)"
     ]
   }
 }

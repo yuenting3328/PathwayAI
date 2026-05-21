@@ -3,7 +3,11 @@
     "allow": [
       "Bash(claude mcp *)",
       "WebFetch(domain:www.figma.com)",
-      "Bash(npx tsx -e ' *)"
+      "Bash(npx tsx -e ' *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); u=d.get\\('user',{}\\); print\\('role:', u.get\\('role'\\), '| email:', u.get\\('email'\\)\\)\")",
+      "Bash(curl -s http://localhost:4000/api/v1/jobs)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('count:', len\\(d\\) if isinstance\\(d,list\\) else d\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('role:', d.get\\('user',{}\\).get\\('role'\\), 'token:', 'ok' if d.get\\('token'\\) else d\\)\")"
     ]
   }
 }
