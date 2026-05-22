@@ -228,26 +228,6 @@ export default function ApplicationDetailScreen() {
                 </motion.div>
               )}
 
-              {/* Accept Offer — only shown when offer is pending (not yet accepted) */}
-              {app.status === 'OFFERED' && !isAccepted && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.03 }}
-                  className="bg-gradient-to-r from-purple-500/20 to-indigo-500/10 border border-purple-500/30 rounded-2xl p-5"
-                >
-                  <p className="text-slate-300 text-sm mb-3">
-                    {t('Accepting this offer will report your placement outcome to your institution so they can track graduate employment.', '接受此邀請後，你的就業結果將同步至大學，用於畢業生就業追蹤。')}
-                  </p>
-                  <button
-                    onClick={() => navigate(`/applications/${id}/accept`)}
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                  >
-                    <PartyPopper className="w-4 h-4" />
-                    {t('Accept Offer & Report Outcome', '接受邀請並上報結果')}
-                  </button>
-                </motion.div>
-              )}
 
               {/* Key info grid */}
               <motion.div
