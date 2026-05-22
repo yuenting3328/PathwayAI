@@ -1,5 +1,5 @@
 import { ArrowLeft, Clock, CheckCircle2, XCircle, Calendar, Building2, TrendingUp, Star, Trophy } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -7,6 +7,7 @@ import { applications as appsApi, type Application, type AppStats } from '../lib
 
 export default function ApplicationsScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
 
   const [appList, setAppList] = useState<Application[]>([]);
@@ -14,6 +15,7 @@ export default function ApplicationsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([appsApi.list(), appsApi.stats()])
       .then(([list, s]) => {
         setAppList(list);
@@ -21,9 +23,17 @@ export default function ApplicationsScreen() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [location.key]);
 
   const getStatusConfig = (status: Application['status'], stage?: string) => {
+    if (stage === 'Offer Accepted') {
+      return {
+        color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
+        icon: CheckCircle2,
+        iconColor: 'text-emerald-400',
+        label: t('Offer Accepted', '已接受邀請'),
+      };
+    }
     // Shortlisted is tracked via stage (status stays PENDING)
     if (stage === 'Shortlisted') {
       return {
@@ -185,10 +195,11 @@ export default function ApplicationsScreen() {
 
                       <div className="flex items-center justify-between">
                         <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${
-                          app.stage === 'Shortlisted'   ? 'bg-sky-500/20 text-sky-300' :
-                          app.status === 'INTERVIEW'    ? 'bg-emerald-500/20 text-emerald-300' :
-                          app.status === 'PENDING'      ? 'bg-amber-500/20 text-amber-300' :
-                          app.status === 'OFFERED'      ? 'bg-purple-500/20 text-purple-300' :
+                          app.stage === 'Offer Accepted' ? 'bg-emerald-500/20 text-emerald-300' :
+                          app.stage === 'Shortlisted'    ? 'bg-sky-500/20 text-sky-300' :
+                          app.status === 'INTERVIEW'     ? 'bg-emerald-500/20 text-emerald-300' :
+                          app.status === 'PENDING'       ? 'bg-amber-500/20 text-amber-300' :
+                          app.status === 'OFFERED'       ? 'bg-purple-500/20 text-purple-300' :
                           'bg-slate-500/20 text-slate-300'
                         }`}>
                           {config.label}
