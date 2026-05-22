@@ -39,7 +39,16 @@ export default function ApplicationDetailScreen() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const getStatusConfig = (status: ApplicationDetail['status']) => {
+  const getStatusConfig = (status: ApplicationDetail['status'], stage?: string) => {
+    if (stage === 'Offer Accepted') {
+      return {
+        gradient: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
+        badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        icon: CheckCircle2,
+        iconColor: 'text-emerald-400',
+        label: t('Offer Accepted', '已接受邀請'),
+      };
+    }
     switch (status) {
       case 'INTERVIEW':
         return {
@@ -92,6 +101,14 @@ export default function ApplicationDetailScreen() {
     }
   };
 
+  const ACCEPTED_TIMELINE = [
+    t('Applied', '已申請'),
+    t('Shortlisted', '入圍'),
+    t('Interview Scheduled', '安排面試'),
+    t('Offer Received', '收到邀請'),
+    t('Offer Accepted', '已接受'),
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
@@ -120,7 +137,8 @@ export default function ApplicationDetailScreen() {
         )}
 
         {!loading && !error && app && (() => {
-          const config = getStatusConfig(app.status);
+          const isAccepted = app.stage === 'Offer Accepted';
+          const config = getStatusConfig(app.status, app.stage);
           const StatusIcon = config.icon;
           const company = app.job?.company ?? '—';
           const position = app.job?.title ?? '—';
@@ -158,8 +176,60 @@ export default function ApplicationDetailScreen() {
                 </div>
               </motion.div>
 
-              {/* Accept Offer */}
-              {app.status === 'OFFERED' && (
+              {/* Accepted state — timeline + read-only indicator */}
+              {isAccepted && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03 }}
+                  className="bg-gradient-to-r from-emerald-500/15 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-5 space-y-4"
+                >
+                  {/* Accepted indicator */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <PartyPopper className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-emerald-300 font-semibold text-sm">
+                        {t('Offer Accepted', '已接受邀請')}
+                      </p>
+                      <p className="text-slate-400 text-xs mt-0.5">
+                        {t('Outcome reported to your institution.', '就業結果已同步至大學。')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Full progress timeline */}
+                  <div>
+                    <p className="text-slate-400 text-xs font-medium mb-3 uppercase tracking-wider">
+                      {t('Application Journey', '求職歷程')}
+                    </p>
+                    <div className="flex items-start">
+                      {ACCEPTED_TIMELINE.map((label, idx) => {
+                        const isLast = idx === ACCEPTED_TIMELINE.length - 1;
+                        return (
+                          <div key={idx} className="flex items-center flex-1">
+                            <div className="flex flex-col items-center flex-1">
+                              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              </div>
+                              <span className="text-[9px] mt-1 text-center leading-tight text-emerald-300 px-0.5">
+                                {label}
+                              </span>
+                            </div>
+                            {!isLast && (
+                              <div className="h-0.5 flex-1 mx-0.5 bg-emerald-500 rounded mb-4" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Accept Offer — only shown when offer is pending (not yet accepted) */}
+              {app.status === 'OFFERED' && !isAccepted && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}

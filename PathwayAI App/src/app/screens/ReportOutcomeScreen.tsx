@@ -1,16 +1,16 @@
-import { ArrowLeft, CheckCircle2, PartyPopper } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, PartyPopper, Home } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { applications as appsApi, outcomes, type ApplicationDetail } from '../lib/api';
 
 const TIMELINE_STEPS = [
-  { key: 'applied',    label: 'Applied',            labelZh: '已申請' },
-  { key: 'shortlisted',label: 'Shortlisted',        labelZh: '入圍' },
-  { key: 'interview',  label: 'Interview Scheduled', labelZh: '安排面試' },
-  { key: 'offered',    label: 'Offer Received',      labelZh: '收到邀請' },
-  { key: 'accepted',   label: 'Accepted',            labelZh: '已接受' },
+  { key: 'applied',     label: 'Applied',             labelZh: '已申請' },
+  { key: 'shortlisted', label: 'Shortlisted',          labelZh: '入圍' },
+  { key: 'interview',   label: 'Interview Scheduled',  labelZh: '安排面試' },
+  { key: 'offered',     label: 'Offer Received',       labelZh: '收到邀請' },
+  { key: 'accepted',    label: 'Offer Accepted',        labelZh: '已接受' },
 ];
 
 export default function ReportOutcomeScreen() {
@@ -21,7 +21,8 @@ export default function ReportOutcomeScreen() {
   const [app, setApp] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -31,6 +32,7 @@ export default function ReportOutcomeScreen() {
   const handleConfirm = async () => {
     if (!app || !id) return;
     setSubmitting(true);
+    setError(null);
     try {
       await outcomes.report({
         applicationId: id,
@@ -42,9 +44,9 @@ export default function ReportOutcomeScreen() {
           : undefined,
         geography: app.job?.district,
       });
-      setDone(true);
+      setShowSheet(true);
     } catch {
-      // non-critical
+      setError(t('Failed to submit. Please try again.', '提交失敗，請重試。'));
     } finally {
       setSubmitting(false);
     }
@@ -100,29 +102,21 @@ export default function ReportOutcomeScreen() {
               className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50"
             >
               <h3 className="text-white font-semibold text-sm mb-4">{t('Your Journey', '你的求職歷程')}</h3>
-              <div className="flex items-center gap-1">
+              <div className="flex items-start gap-0">
                 {TIMELINE_STEPS.map((step, idx) => {
                   const isLast = idx === TIMELINE_STEPS.length - 1;
-                  const isActive = done ? true : idx < TIMELINE_STEPS.length - 1;
                   return (
                     <div key={step.key} className="flex items-center flex-1">
                       <div className="flex flex-col items-center flex-1">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors ${
-                          isActive
-                            ? 'bg-purple-600 border-purple-500'
-                            : 'bg-slate-700 border-slate-600'
-                        }`}>
-                          {isActive
-                            ? <CheckCircle2 className="w-4 h-4 text-white" />
-                            : <span className="w-2 h-2 rounded-full bg-slate-500" />
-                          }
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center border-2 bg-purple-600 border-purple-500">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className={`text-[10px] mt-1.5 text-center leading-tight ${isActive ? 'text-purple-300' : 'text-slate-500'}`}>
+                        <span className="text-[9px] mt-1.5 text-center leading-tight text-purple-300 px-0.5">
                           {t(step.label, step.labelZh)}
                         </span>
                       </div>
                       {!isLast && (
-                        <div className={`h-0.5 flex-1 mx-1 rounded ${isActive ? 'bg-purple-600' : 'bg-slate-700'}`} />
+                        <div className="h-0.5 flex-1 mx-0.5 rounded bg-purple-600 mb-4" />
                       )}
                     </div>
                   );
@@ -130,55 +124,98 @@ export default function ReportOutcomeScreen() {
               </div>
             </motion.div>
 
-            {/* Confirm / done */}
+            {/* Confirm */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50"
             >
-              {done ? (
-                <div className="flex flex-col items-center gap-3 py-4 text-center">
-                  <PartyPopper className="w-10 h-10 text-purple-400" />
-                  <p className="text-white font-semibold">
-                    {t('Congratulations!', '恭喜！')}
-                  </p>
-                  <p className="text-slate-400 text-sm">
-                    {t('Your placement outcome has been reported to your institution.', '你的就業結果已同步至大學。')}
-                  </p>
-                  <button
-                    onClick={() => navigate('/applications')}
-                    className="mt-2 px-6 py-2.5 bg-slate-700 text-white rounded-xl text-sm font-medium hover:bg-slate-600 transition-colors"
-                  >
-                    {t('Back to Applications', '返回申請列表')}
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <p className="text-slate-300 text-sm mb-4">
-                    {t(
-                      'By confirming, your placement outcome will be shared with your institution to support graduate employment tracking. Your details remain anonymised in institutional reports.',
-                      '確認後，你的就業結果將以匿名方式提交至大學，用於畢業生就業數據追蹤。',
-                    )}
-                  </p>
-                  <button
-                    onClick={handleConfirm}
-                    disabled={submitting}
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
-                    <PartyPopper className="w-4 h-4" />
-                    {submitting
-                      ? t('Submitting…', '提交中…')
-                      : t('Confirm & Accept Offer', '確認並接受邀請')}
-                  </button>
-                </>
+              <p className="text-slate-300 text-sm mb-4">
+                {t(
+                  'By confirming, your placement outcome will be shared with your institution to support graduate employment tracking. Your details remain anonymised in institutional reports.',
+                  '確認後，你的就業結果將以匿名方式提交至大學，用於畢業生就業數據追蹤。',
+                )}
+              </p>
+              {error && (
+                <p className="text-red-400 text-xs mb-3">{error}</p>
               )}
+              <button
+                onClick={handleConfirm}
+                disabled={submitting}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <PartyPopper className="w-4 h-4" />
+                {submitting
+                  ? t('Submitting…', '提交中…')
+                  : t('Confirm & Accept Offer', '確認並接受邀請')}
+              </button>
             </motion.div>
           </>
         )}
 
         <div className="h-4" />
       </div>
+
+      {/* Success Bottom Sheet */}
+      <AnimatePresence>
+        {showSheet && (
+          <div className="fixed inset-0 z-50 flex items-end">
+            {/* Backdrop — intentionally no onClick so tapping it does nothing */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/70"
+            />
+
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative w-full bg-slate-800 rounded-t-3xl border-t border-slate-700/60 px-6 pt-6 pb-10 space-y-5"
+            >
+              {/* Drag handle */}
+              <div className="w-10 h-1 bg-slate-600 rounded-full mx-auto mb-2" />
+
+              {/* Success indicator */}
+              <div className="flex flex-col items-center gap-3 py-2">
+                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                </div>
+                <h2 className="text-white text-2xl font-bold">
+                  {t('Accepted Successfully', '已成功接受')}
+                </h2>
+                <p className="text-slate-400 text-sm text-center leading-relaxed">
+                  {t(
+                    'Your offer acceptance has been recorded and your placement outcome reported to your institution.',
+                    '你已成功接受邀請，就業結果已同步至大學。',
+                  )}
+                </p>
+              </div>
+
+              {/* Primary button */}
+              <button
+                onClick={() => navigate(`/applications/${id}`, { replace: true })}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                {t('Back to Application Detail', '返回申請詳情')}
+              </button>
+
+              {/* Secondary button */}
+              <button
+                onClick={() => navigate('/', { replace: true })}
+                className="w-full bg-slate-700 text-slate-200 py-3.5 rounded-xl text-sm font-medium hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                {t('Back to Home', '返回主頁')}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
