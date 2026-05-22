@@ -14,12 +14,13 @@ import {
   FileText,
   TrendingUp,
   PartyPopper,
+  Home,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { applications as appsApi, type ApplicationDetail } from '../lib/api';
+import { applications as appsApi, outcomes, type ApplicationDetail } from '../lib/api';
 
 export default function ApplicationDetailScreen() {
   const navigate = useNavigate();
@@ -29,6 +30,9 @@ export default function ApplicationDetailScreen() {
   const [app, setApp] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -39,8 +43,31 @@ export default function ApplicationDetailScreen() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const getStatusConfig = (status: ApplicationDetail['status'], stage?: string) => {
-    if (stage === 'Offer Accepted') {
+  const handleAccept = async () => {
+    if (!app || !id) return;
+    setSubmitting(true);
+    try {
+      await outcomes.report({
+        applicationId: id,
+        company: app.job?.company ?? '',
+        role: app.job?.title ?? '',
+        sector: app.job?.sector,
+        salaryBand: app.job?.salaryMin != null
+          ? `${app.job.salaryMin}-${app.job.salaryMax}`
+          : undefined,
+        geography: app.job?.district,
+      });
+      setAccepted(true);
+      setShowSheet(true);
+    } catch {
+      // accept failures are non-critical for the demo
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusConfig = (status: ApplicationDetail['status'], stage?: string, localAccepted = false) => {
+    if (localAccepted || stage === 'Offer Accepted') {
       return {
         gradient: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
         badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
@@ -137,8 +164,8 @@ export default function ApplicationDetailScreen() {
         )}
 
         {!loading && !error && app && (() => {
-          const isAccepted = app.stage === 'Offer Accepted';
-          const config = getStatusConfig(app.status, app.stage);
+          const isAccepted = accepted || app.stage === 'Offer Accepted';
+          const config = getStatusConfig(app.status, app.stage, accepted);
           const StatusIcon = config.icon;
           const company = app.job?.company ?? '—';
           const position = app.job?.title ?? '—';
@@ -176,7 +203,29 @@ export default function ApplicationDetailScreen() {
                 </div>
               </motion.div>
 
-              {/* Accepted state — timeline + read-only indicator */}
+              {/* Accept Offer button — shown only when offer is pending */}
+              {app.status === 'OFFERED' && !isAccepted && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03 }}
+                  className="bg-gradient-to-r from-purple-500/20 to-indigo-500/10 border border-purple-500/30 rounded-2xl p-5"
+                >
+                  <p className="text-slate-300 text-sm mb-3">
+                    {t('Accepting this offer will report your placement outcome to your institution so they can track graduate employment.', '接受此邀請後，你的就業結果將同步至大學，用於畢業生就業追蹤。')}
+                  </p>
+                  <button
+                    onClick={handleAccept}
+                    disabled={submitting}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <PartyPopper className="w-4 h-4" />
+                    {submitting ? t('Submitting…', '提交中…') : t('Accept Offer', '接受邀請')}
+                  </button>
+                </motion.div>
+              )}
+
+              {/* Accepted state — read-only indicator + full journey timeline */}
               {isAccepted && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
@@ -184,7 +233,6 @@ export default function ApplicationDetailScreen() {
                   transition={{ delay: 0.03 }}
                   className="bg-gradient-to-r from-emerald-500/15 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-5 space-y-4"
                 >
-                  {/* Accepted indicator */}
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                       <PartyPopper className="w-5 h-5 text-emerald-400" />
@@ -199,7 +247,6 @@ export default function ApplicationDetailScreen() {
                     </div>
                   </div>
 
-                  {/* Full progress timeline */}
                   <div>
                     <p className="text-slate-400 text-xs font-medium mb-3 uppercase tracking-wider">
                       {t('Application Journey', '求職歷程')}
@@ -228,7 +275,6 @@ export default function ApplicationDetailScreen() {
                 </motion.div>
               )}
 
-
               {/* Key info grid */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -246,7 +292,7 @@ export default function ApplicationDetailScreen() {
                   icon={Briefcase}
                   iconColor="text-amber-400"
                   label={t('Stage', '申請階段')}
-                  value={app.stage}
+                  value={isAccepted ? t('Offer Accepted', '已接受邀請') : app.stage}
                 />
                 {app.interviewDate && (
                   <InfoCard
@@ -336,6 +382,65 @@ export default function ApplicationDetailScreen() {
           );
         })()}
       </div>
+
+      {/* Success bottom sheet */}
+      <AnimatePresence>
+        {showSheet && (
+          <div className="fixed inset-0 z-50 flex items-end">
+            {/* Backdrop — no onClick; tapping outside does nothing */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/70"
+            />
+
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative w-full bg-slate-800 rounded-t-3xl border-t border-slate-700/60 px-6 pt-5 pb-10 space-y-4"
+            >
+              {/* Drag handle */}
+              <div className="w-10 h-1 bg-slate-600 rounded-full mx-auto mb-1" />
+
+              {/* Success indicator */}
+              <div className="flex flex-col items-center gap-3 py-3">
+                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                </div>
+                <h2 className="text-white text-2xl font-bold">
+                  {t('Accepted Successfully', '已成功接受')}
+                </h2>
+                <p className="text-slate-400 text-sm text-center leading-relaxed">
+                  {t(
+                    'Your offer acceptance has been recorded and your outcome reported to your institution.',
+                    '你已成功接受邀請，就業結果已同步至大學。',
+                  )}
+                </p>
+              </div>
+
+              {/* Primary — back to this screen (dismiss sheet) */}
+              <button
+                onClick={() => setShowSheet(false)}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                {t('Back to Application Detail', '返回申請詳情')}
+              </button>
+
+              {/* Secondary — go home */}
+              <button
+                onClick={() => navigate('/')}
+                className="w-full bg-slate-700 text-slate-200 py-3.5 rounded-xl text-sm font-medium hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                {t('Back to Home', '返回主頁')}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
