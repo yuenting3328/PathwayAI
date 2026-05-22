@@ -19,6 +19,7 @@ import {
 import { useNavigate, useParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { applications as appsApi, outcomes, type ApplicationDetail } from '../lib/api';
 
@@ -57,12 +58,12 @@ export default function ApplicationDetailScreen() {
           : undefined,
         geography: app.job?.district,
       });
-      setAccepted(true);
-      setShowSheet(true);
     } catch {
-      // accept failures are non-critical for the demo
+      // outcome sync failure — UX proceeds regardless
     } finally {
       setSubmitting(false);
+      setAccepted(true);
+      setShowSheet(true);
     }
   };
 
@@ -383,64 +384,63 @@ export default function ApplicationDetailScreen() {
         })()}
       </div>
 
-      {/* Success bottom sheet */}
-      <AnimatePresence>
-        {showSheet && (
-          <div className="fixed inset-0 z-50 flex items-end">
-            {/* Backdrop — no onClick; tapping outside does nothing */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/70"
-            />
+      {/* Success bottom sheet — portalled to body to escape overflow-y-auto clipping */}
+      {createPortal(
+        <AnimatePresence>
+          {showSheet && (
+            <div className="fixed inset-0 z-[9999] flex items-end">
+              {/* Backdrop — no onClick so tapping outside does nothing */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/70"
+              />
 
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="relative w-full bg-slate-800 rounded-t-3xl border-t border-slate-700/60 px-6 pt-5 pb-10 space-y-4"
-            >
-              {/* Drag handle */}
-              <div className="w-10 h-1 bg-slate-600 rounded-full mx-auto mb-1" />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                className="relative w-full bg-slate-800 rounded-t-3xl border-t border-slate-700/60 px-6 pt-5 pb-10 space-y-4"
+              >
+                <div className="w-10 h-1 bg-slate-600 rounded-full mx-auto mb-1" />
 
-              {/* Success indicator */}
-              <div className="flex flex-col items-center gap-3 py-3">
-                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                <div className="flex flex-col items-center gap-3 py-3">
+                  <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                  </div>
+                  <h2 className="text-white text-2xl font-bold">
+                    {t('Accepted Successfully', '已成功接受')}
+                  </h2>
+                  <p className="text-slate-400 text-sm text-center leading-relaxed">
+                    {t(
+                      'Your offer acceptance has been recorded and your outcome reported to your institution.',
+                      '你已成功接受邀請，就業結果已同步至大學。',
+                    )}
+                  </p>
                 </div>
-                <h2 className="text-white text-2xl font-bold">
-                  {t('Accepted Successfully', '已成功接受')}
-                </h2>
-                <p className="text-slate-400 text-sm text-center leading-relaxed">
-                  {t(
-                    'Your offer acceptance has been recorded and your outcome reported to your institution.',
-                    '你已成功接受邀請，就業結果已同步至大學。',
-                  )}
-                </p>
-              </div>
 
-              {/* Primary — back to this screen (dismiss sheet) */}
-              <button
-                onClick={() => setShowSheet(false)}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                {t('Back to Application Detail', '返回申請詳情')}
-              </button>
+                <button
+                  onClick={() => setShowSheet(false)}
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  {t('Back to Application Detail', '返回申請詳情')}
+                </button>
 
-              {/* Secondary — go home */}
-              <button
-                onClick={() => navigate('/')}
-                className="w-full bg-slate-700 text-slate-200 py-3.5 rounded-xl text-sm font-medium hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
-              >
-                <Home className="w-4 h-4" />
-                {t('Back to Home', '返回主頁')}
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <button
+                  onClick={() => navigate('/')}
+                  className="w-full bg-slate-700 text-slate-200 py-3.5 rounded-xl text-sm font-medium hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Home className="w-4 h-4" />
+                  {t('Back to Home', '返回主頁')}
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }
