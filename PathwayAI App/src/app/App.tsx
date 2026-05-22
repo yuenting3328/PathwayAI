@@ -28,6 +28,7 @@ import AlumniPathsScreen from './screens/AlumniPathsScreen';
 import CredentialsWalletScreen from './screens/CredentialsWalletScreen';
 import ApplicationsScreen from './screens/ApplicationsScreen';
 import ApplicationDetailScreen from './screens/ApplicationDetailScreen';
+import ReportOutcomeScreen from './screens/ReportOutcomeScreen';
 import InterviewsScreen from './screens/InterviewsScreen';
 import InterviewSessionSetupScreen from './screens/InterviewSessionSetupScreen';
 import InterviewPracticeScreen from './screens/InterviewPracticeScreen';
@@ -246,6 +247,14 @@ function AppRoutes() {
               element={
                 <Layout>
                   <ApplicationDetailScreen />
+                </Layout>
+              }
+            />
+            <Route
+              path="/applications/:id/accept"
+              element={
+                <Layout>
+                  <ReportOutcomeScreen />
                 </Layout>
               }
             />

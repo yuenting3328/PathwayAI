@@ -1,4 +1,4 @@
-import { ArrowLeft, Briefcase, Clock, CheckCircle2, XCircle, Calendar, Building2, TrendingUp, Star } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, XCircle, Calendar, Building2, TrendingUp, Star, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -96,15 +96,6 @@ export default function ApplicationsScreen() {
         <div className="grid grid-cols-4 gap-3">
           <motion.div
             whileHover={{ scale: 1.02, y: -2 }}
-            className="bg-gradient-to-br from-indigo-500/20 to-purple-500/10 backdrop-blur-sm rounded-xl p-4 border border-indigo-500/30 shadow-lg"
-          >
-            <Briefcase className="w-5 h-5 text-indigo-400 mb-2" />
-            <p className="text-2xl font-bold text-white">{stats.total}</p>
-            <p className="text-xs text-slate-400">{t('Total', '總數')}</p>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02, y: -2 }}
             className="bg-gradient-to-br from-sky-500/20 to-cyan-500/10 backdrop-blur-sm rounded-xl p-4 border border-sky-500/30 shadow-lg"
           >
             <Star className="w-5 h-5 text-sky-400 mb-2" />
@@ -119,6 +110,15 @@ export default function ApplicationsScreen() {
             <CheckCircle2 className="w-5 h-5 text-emerald-400 mb-2" />
             <p className="text-2xl font-bold text-white">{stats.interviews}</p>
             <p className="text-xs text-slate-400">{t('Interview', '面試')}</p>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.02, y: -2 }}
+            className="bg-gradient-to-br from-purple-500/20 to-indigo-500/10 backdrop-blur-sm rounded-xl p-4 border border-purple-500/30 shadow-lg"
+          >
+            <Trophy className="w-5 h-5 text-purple-400 mb-2" />
+            <p className="text-2xl font-bold text-white">{stats.offers}</p>
+            <p className="text-xs text-slate-400">{t('Offers', '邀請')}</p>
           </motion.div>
 
           <motion.div
@@ -191,7 +191,7 @@ export default function ApplicationsScreen() {
                           app.status === 'OFFERED'      ? 'bg-purple-500/20 text-purple-300' :
                           'bg-slate-500/20 text-slate-300'
                         }`}>
-                          {app.stage}
+                          {config.label}
                         </span>
                       </div>
                     </div>

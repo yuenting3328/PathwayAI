@@ -251,6 +251,7 @@ model GraduateOutcome {
   institutionId   String
   programmeId     String?
   cohortRef       String   // anonymised "A001" etc.
+  studentName     String?
   cohortYear      Int
   sector          String?
   role            String?

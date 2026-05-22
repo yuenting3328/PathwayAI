@@ -124,6 +124,7 @@ export interface GraduateSearchResult {
 export interface GraduateOutcome {
   id: string;
   cohortRef: string;
+  studentName?: string;
   cohortYear: number;
   sector?: string;
   role?: string;

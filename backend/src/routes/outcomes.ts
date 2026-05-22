@@ -48,6 +48,7 @@ export default async function outcomeRoutes(app: FastifyInstance) {
         institutionId: user.institutionId,
         programmeId: programme?.id ?? null,
         cohortRef,
+        studentName: profile?.name ?? null,
         cohortYear: profile?.graduationYear ?? new Date().getFullYear(),
         company: body.data.company,
         role: body.data.role,

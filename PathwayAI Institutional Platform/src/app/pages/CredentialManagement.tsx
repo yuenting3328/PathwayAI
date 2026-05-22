@@ -309,6 +309,53 @@ export default function CredentialManagement() {
         </div>
       </div>
 
+      {/* Issued Credentials Records */}
+      {credentials.length > 0 && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-5 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-[18px] font-semibold text-foreground">Issued Credentials</h3>
+              <p className="text-[13px] text-muted-foreground mt-1">Credentials issued via this platform</p>
+            </div>
+            <span className="text-[13px] text-muted-foreground">{credentials.length} record{credentials.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-background border-b-2 border-border">
+                <tr>
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Student</th>
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Credential Name</th>
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Issued At</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {credentials.map((c) => (
+                  <tr key={c.id} className="hover:bg-accent transition-colors">
+                    <td className="px-6 py-3 text-[13px] text-foreground">{c.recipientRef}</td>
+                    <td className="px-6 py-3 text-[13px] text-muted-foreground">{c.type}</td>
+                    <td className="px-6 py-3 text-[13px] text-foreground font-medium">{c.name}</td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-flex px-2 py-1 rounded text-[11px] font-medium ${
+                        c.status === 'VERIFIED' ? 'bg-[#34D399]/15 text-[#34D399]' :
+                        c.status === 'PENDING'  ? 'bg-[#FBBF24]/15 text-[#FBBF24]' :
+                        'bg-[#F43F5E]/15 text-[#F43F5E]'
+                      }`}>
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-[13px] text-muted-foreground">
+                      {c.issuedAt ? new Date(c.issuedAt).toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Verification Activity & Top Verifiers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-xl overflow-hidden">

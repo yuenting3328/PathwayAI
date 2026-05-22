@@ -131,6 +131,7 @@ export default function InstitutionalAnalytics() {
   // E. Cohort drilldown data from outcomes
   const cohortRecords = outcomes.map(o => ({
     id: o.cohortRef,
+    student: o.studentName ?? o.cohortRef,
     outcomeStatus: o.role ? 'Employed' : o.sector === 'Education' ? 'Further Study' : 'Seeking',
     roleTitle: o.role ?? (o.sector === 'Education' ? 'Further Study' : 'Job Seeking'),
     sector: o.sector ?? 'N/A',
@@ -620,7 +621,7 @@ export default function InstitutionalAnalytics() {
           <table className="w-full">
             <thead className="bg-background border-b-2 border-border">
               <tr>
-                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Student</th>
                 <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Outcome Status</th>
                 <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Role Title</th>
                 <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Sector</th>
@@ -631,7 +632,7 @@ export default function InstitutionalAnalytics() {
             <tbody className="divide-y divide-border">
               {cohortRecords.map((record) => (
                 <tr key={record.id} className="hover:bg-accent transition-colors">
-                  <td className="px-6 py-3 text-[13px] font-mono text-foreground">{record.id}</td>
+                  <td className="px-6 py-3 text-[13px] text-foreground">{record.student}</td>
                   <td className="px-6 py-3">
                     <span className={`inline-flex px-2 py-1 rounded text-[11px] font-medium ${
                       record.outcomeStatus === 'Employed' ? 'bg-[#34D399]/15 text-[#34D399]' :
