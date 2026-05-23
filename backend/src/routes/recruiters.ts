@@ -183,7 +183,7 @@ export default async function recruiterRoutes(app: FastifyInstance) {
             profile: {
               select: { name: true, university: true, faculty: true, graduationYear: true },
             },
-            skills: { include: { skill: { select: { name: true } } }, take: 5, orderBy: { level: 'desc' } },
+            skills: { include: { skill: { select: { name: true } } }, orderBy: { level: 'desc' } },
           },
         },
       },

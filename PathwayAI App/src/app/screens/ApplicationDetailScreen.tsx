@@ -15,6 +15,7 @@ import {
   TrendingUp,
   PartyPopper,
   Home,
+  Star,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
@@ -75,6 +76,15 @@ export default function ApplicationDetailScreen() {
         icon: CheckCircle2,
         iconColor: 'text-emerald-400',
         label: t('Offer Accepted', '已接受邀請'),
+      };
+    }
+    if (stage === 'Shortlisted') {
+      return {
+        gradient: 'from-sky-500/20 to-cyan-500/10 border-sky-500/30',
+        badge: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+        icon: Star,
+        iconColor: 'text-sky-400',
+        label: t('Shortlisted', '入圍'),
       };
     }
     switch (status) {

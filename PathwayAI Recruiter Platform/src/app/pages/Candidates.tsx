@@ -1,4 +1,4 @@
-import { GraduationCap, Star, Award, ChevronRight, X, CheckCircle, XCircle, Calendar, Trophy } from 'lucide-react';
+import { GraduationCap, Star, Award, ChevronRight, X, CheckCircle, XCircle, Trophy, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { candidates as candidatesApi, type CandidateApplication, type CandidateDetail } from '../lib/api';
 
@@ -23,7 +23,8 @@ const stageConfig: Record<CandidateApplication['status'], { label: string; color
 export default function Candidates() {
   const [list, setList] = useState<CandidateApplication[]>([]);
   const [selected, setSelected] = useState<CandidateDetail | null>(null);
-  const [stageFilter, setStageFilter] = useState<CandidateApplication['status'] | 'ALL'>('ALL');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [institutionFilter, setInstitutionFilter] = useState('ALL');
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -53,32 +54,44 @@ export default function Candidates() {
     }
   };
 
-  const filtered = stageFilter === 'ALL' ? list : list.filter(c => c.status === stageFilter);
+  const roles = ['ALL', ...Array.from(new Set(list.map(c => c.jobTitle)))];
+  const institutions = ['ALL', ...Array.from(new Set(list.map(c => c.graduate.university)))];
+
+  const filtered = list.filter(c =>
+    (roleFilter === 'ALL' || c.jobTitle === roleFilter) &&
+    (institutionFilter === 'ALL' || c.graduate.university === institutionFilter)
+  );
 
   return (
     <div className="space-y-5">
-      {/* Stage filter */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={() => setStageFilter('ALL')}
-          className={`h-8 px-3 rounded-lg text-[13px] font-medium transition-colors ${stageFilter === 'ALL' ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:bg-accent'}`}>
-          All ({list.length})
-        </button>
-        {STAGES.map(s => {
-          const count = list.filter(c => c.status === s).length;
-          const cfg = stageConfig[s];
-          return (
-            <button key={s} onClick={() => setStageFilter(s)}
-              className={`h-8 px-3 rounded-lg text-[13px] font-medium transition-colors border ${stageFilter === s ? 'bg-primary text-white border-primary' : 'bg-card border-border text-muted-foreground hover:bg-accent'}`}>
-              {cfg.label} ({count})
-            </button>
-          );
-        })}
+      {/* Role & Institution filters */}
+      <div className="flex items-center gap-3">
+        <select
+          value={roleFilter}
+          onChange={e => setRoleFilter(e.target.value)}
+          className="h-9 px-3 rounded-lg text-[13px] bg-card border border-border text-foreground focus:outline-none focus:border-primary"
+        >
+          <option value="ALL">All Roles</option>
+          {roles.filter(r => r !== 'ALL').map(r => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <select
+          value={institutionFilter}
+          onChange={e => setInstitutionFilter(e.target.value)}
+          className="h-9 px-3 rounded-lg text-[13px] bg-card border border-border text-foreground focus:outline-none focus:border-primary"
+        >
+          <option value="ALL">All Institutions</option>
+          {institutions.filter(i => i !== 'ALL').map(i => (
+            <option key={i} value={i}>{i}</option>
+          ))}
+        </select>
       </div>
 
       {/* Kanban-style grid */}
       <div className="grid grid-cols-5 gap-3">
         {STAGES.map(stage => {
-          const stageCandidates = list.filter(c => c.status === stage);
+          const stageCandidates = filtered.filter(c => c.status === stage);
           const cfg = stageConfig[stage];
           return (
             <div key={stage} className="bg-card border border-border rounded-xl overflow-hidden">
@@ -202,7 +215,7 @@ export default function Candidates() {
                       className="w-full h-10 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-2 transition-opacity hover:opacity-85 disabled:opacity-50"
                       style={{ backgroundColor: '#FBBF24', color: '#000' }}
                     >
-                      <Calendar className="w-4 h-4" /> Schedule Interview
+                      <Video className="w-4 h-4" /> Move to Interview
                     </button>
                   )}
                   {selected.status === 'INTERVIEWING' && (
