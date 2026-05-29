@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../index.js';
+import { emit } from '../events.js';
 
 // Guard: only RECRUITER or SUPER_ADMIN
 async function requireRecruiter(request: any, reply: any) {
@@ -300,8 +301,8 @@ export default async function recruiterRoutes(app: FastifyInstance) {
       data: { stage, ...(status && { status }) },
     });
 
-    // Notify the graduate when shortlisted, moved to interview, or offered
-    if (['SHORTLISTED', 'INTERVIEWING', 'OFFERED'].includes(body.data.status)) {
+    // Notify the graduate for all status changes except APPLIED
+    if (['SHORTLISTED', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(body.data.status)) {
       const job = await prisma.job.findUnique({
         where: { id: application.jobId },
         select: { title: true, company: true },
@@ -317,13 +318,19 @@ export default async function recruiterRoutes(app: FastifyInstance) {
               title: 'Interview Scheduled',
               message: `You've been selected for an interview for ${job?.title ?? 'a role'} at ${job?.company ?? 'the employer'}.`,
             }
-          : {
+          : body.data.status === 'OFFERED'
+          ? {
               title: 'Offer Received',
               message: `Congratulations! You have received an offer for ${job?.title ?? 'a role'} at ${job?.company ?? 'the employer'}.`,
+            }
+          : {
+              title: 'Application Update',
+              message: `Your application for ${job?.title ?? 'a role'} at ${job?.company ?? 'the employer'} was not selected.`,
             };
       await prisma.notification.create({
-        data: { userId: application.userId, type: 'STAGE_CHANGE', ...notif },
+        data: { userId: application.userId, type: 'STAGE_CHANGE', applicationId: id, ...notif },
       });
+      emit({ type: 'STAGE_CHANGE', userId: application.userId, applicationId: id, ...notif });
     }
 
     return { id, status: body.data.status };

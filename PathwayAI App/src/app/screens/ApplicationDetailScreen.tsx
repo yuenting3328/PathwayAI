@@ -17,7 +17,7 @@ import {
   Home,
   Star,
 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -27,7 +27,9 @@ import { applications as appsApi, outcomes, type ApplicationDetail } from '../li
 export default function ApplicationDetailScreen() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const { t } = useLanguage();
+  const fromNotification = (location.state as { from?: string } | null)?.from === 'notification';
 
   const [app, setApp] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,7 @@ export default function ApplicationDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
+  const [offerTab, setOfferTab] = useState<'offer' | 'job'>('offer');
 
   useEffect(() => {
     if (!id) return;
@@ -154,7 +157,7 @@ export default function ApplicationDetailScreen() {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => navigate(-1)}
+          onClick={() => fromNotification ? navigate('/notifications') : navigate(-1)}
           className="w-10 h-10 bg-slate-800/60 rounded-xl flex items-center justify-center border border-slate-700/50 hover:border-slate-600"
         >
           <ArrowLeft className="w-5 h-5 text-slate-400" />
@@ -286,106 +289,162 @@ export default function ApplicationDetailScreen() {
                 </motion.div>
               )}
 
-              {/* Key info grid */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="grid grid-cols-2 gap-3"
-              >
-                <InfoCard
-                  icon={Calendar}
-                  iconColor="text-indigo-400"
-                  label={t('Applied Date', '申請日期')}
-                  value={new Date(app.appliedDate).toLocaleDateString('en-HK', { year: 'numeric', month: 'short', day: 'numeric' })}
-                />
-                <InfoCard
-                  icon={Briefcase}
-                  iconColor="text-amber-400"
-                  label={t('Stage', '申請階段')}
-                  value={isAccepted ? t('Offer Accepted', '已接受邀請') : app.stage}
-                />
-                {app.interviewDate && (
-                  <InfoCard
-                    icon={TrendingUp}
-                    iconColor="text-emerald-400"
-                    label={t('Interview Date', '面試日期')}
-                    value={new Date(app.interviewDate).toLocaleDateString('en-HK', { year: 'numeric', month: 'short', day: 'numeric' })}
-                  />
-                )}
-                {app.job?.salaryMin != null && app.job?.salaryMax != null && (
-                  <InfoCard
-                    icon={DollarSign}
-                    iconColor="text-green-400"
-                    label={t('Salary (HKD/mo)', '薪酬（港幣/月）')}
-                    value={`$${app.job.salaryMin.toLocaleString()} – $${app.job.salaryMax.toLocaleString()}`}
-                  />
-                )}
-                {app.job?.deadline && (
-                  <InfoCard
-                    icon={Clock}
-                    iconColor="text-rose-400"
-                    label={t('Deadline', '截止日期')}
-                    value={new Date(app.job.deadline).toLocaleDateString('en-HK', { year: 'numeric', month: 'short', day: 'numeric' })}
-                  />
-                )}
-              </motion.div>
-
-              {/* Responsibilities */}
-              {app.job?.responsibilities && (
-                <Section
-                  delay={0.1}
-                  icon={ListChecks}
-                  iconColor="text-indigo-400"
-                  title={t('Responsibilities', '工作職責')}
+              {/* Tab switcher — only on offer page */}
+              {(app.status === 'OFFERED' || isAccepted) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.06 }}
+                  className="flex bg-slate-800/60 rounded-xl p-1 border border-slate-700/50"
                 >
-                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{app.job.responsibilities}</p>
-                </Section>
+                  {(['offer', 'job'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setOfferTab(tab)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                        offerTab === tab
+                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                          : 'text-slate-400 hover:text-slate-300'
+                      }`}
+                    >
+                      {tab === 'offer' ? t('Offer Details', '邀請詳情') : t('Job Details', '職位詳情')}
+                    </button>
+                  ))}
+                </motion.div>
               )}
 
-              {/* Requirements */}
-              {app.job?.requirements && (
-                <Section
-                  delay={0.15}
-                  icon={GraduationCap}
-                  iconColor="text-purple-400"
-                  title={t('Requirements', '職位要求')}
+              {/* Offer Details tab */}
+              {(app.status === 'OFFERED' || isAccepted) && offerTab === 'offer' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 }}
+                  className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 divide-y divide-slate-700/50"
                 >
-                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{app.job.requirements}</p>
-                </Section>
+                  {[
+                    { icon: Briefcase,   iconColor: 'text-purple-400', label: t('Title', '職位名稱'),   value: app.job?.title ?? '—' },
+                    { icon: DollarSign,  iconColor: 'text-green-400',  label: t('Salary', '薪酬'),       value: app.job?.salaryMin != null ? `HK$${app.job.salaryMin.toLocaleString()} – $${app.job.salaryMax.toLocaleString()}/mo` : '—' },
+                    { icon: Calendar,    iconColor: 'text-indigo-400', label: t('Start Date', '入職日期'), value: t('To be confirmed', '待確認') },
+                    { icon: FileText,    iconColor: 'text-amber-400',  label: t('Terms', '合約條款'),    value: t('Full-time, Permanent', '全職，長期') },
+                  ].map(({ icon: Icon, iconColor, label, value }) => (
+                    <div key={label} className="flex items-center gap-4 px-5 py-4">
+                      <div className={`w-8 h-8 rounded-lg bg-slate-700/60 flex items-center justify-center flex-shrink-0`}>
+                        <Icon className={`w-4 h-4 ${iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-400 text-xs mb-0.5">{label}</p>
+                        <p className="text-white text-sm font-medium truncate">{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
               )}
 
-              {/* Skills */}
-              {app.job?.skills && app.job.skills.length > 0 && (
-                <Section
-                  delay={0.2}
-                  icon={Wrench}
-                  iconColor="text-emerald-400"
-                  title={t('Skills Required', '所需技能')}
-                >
-                  <div className="flex flex-wrap gap-2">
-                    {app.job.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="text-xs px-3 py-1.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-full"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </Section>
-              )}
+              {/* Job Details tab (or full content for non-offer statuses) */}
+              {(!(app.status === 'OFFERED' || isAccepted) || offerTab === 'job') && (
+                <>
+                  {/* Key info grid */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="grid grid-cols-2 gap-3"
+                  >
+                    <InfoCard
+                      icon={Calendar}
+                      iconColor="text-indigo-400"
+                      label={t('Applied Date', '申請日期')}
+                      value={new Date(app.appliedDate).toLocaleDateString('en-HK', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    />
+                    <InfoCard
+                      icon={Briefcase}
+                      iconColor="text-amber-400"
+                      label={t('Stage', '申請階段')}
+                      value={isAccepted ? t('Offer Accepted', '已接受邀請') : app.stage}
+                    />
+                    {app.interviewDate && (
+                      <InfoCard
+                        icon={TrendingUp}
+                        iconColor="text-emerald-400"
+                        label={t('Interview Date', '面試日期')}
+                        value={new Date(app.interviewDate).toLocaleDateString('en-HK', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      />
+                    )}
+                    {app.job?.salaryMin != null && app.job?.salaryMax != null && (
+                      <InfoCard
+                        icon={DollarSign}
+                        iconColor="text-green-400"
+                        label={t('Salary (HKD/mo)', '薪酬（港幣/月）')}
+                        value={`$${app.job.salaryMin.toLocaleString()} – $${app.job.salaryMax.toLocaleString()}`}
+                      />
+                    )}
+                    {app.job?.deadline && (
+                      <InfoCard
+                        icon={Clock}
+                        iconColor="text-rose-400"
+                        label={t('Deadline', '截止日期')}
+                        value={new Date(app.job.deadline).toLocaleDateString('en-HK', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      />
+                    )}
+                  </motion.div>
 
-              {/* Notes */}
-              {app.notes && (
-                <Section
-                  delay={0.25}
-                  icon={FileText}
-                  iconColor="text-slate-400"
-                  title={t('My Notes', '我的備註')}
-                >
-                  <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{app.notes}</p>
-                </Section>
+                  {/* Responsibilities */}
+                  {app.job?.responsibilities && (
+                    <Section
+                      delay={0.1}
+                      icon={ListChecks}
+                      iconColor="text-indigo-400"
+                      title={t('Responsibilities', '工作職責')}
+                    >
+                      <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{app.job.responsibilities}</p>
+                    </Section>
+                  )}
+
+                  {/* Requirements */}
+                  {app.job?.requirements && (
+                    <Section
+                      delay={0.15}
+                      icon={GraduationCap}
+                      iconColor="text-purple-400"
+                      title={t('Requirements', '職位要求')}
+                    >
+                      <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{app.job.requirements}</p>
+                    </Section>
+                  )}
+
+                  {/* Skills */}
+                  {app.job?.skills && app.job.skills.length > 0 && (
+                    <Section
+                      delay={0.2}
+                      icon={Wrench}
+                      iconColor="text-emerald-400"
+                      title={t('Skills Required', '所需技能')}
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        {app.job.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="text-xs px-3 py-1.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-full"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+
+                  {/* Notes */}
+                  {app.notes && (
+                    <Section
+                      delay={0.25}
+                      icon={FileText}
+                      iconColor="text-slate-400"
+                      title={t('My Notes', '我的備註')}
+                    >
+                      <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{app.notes}</p>
+                    </Section>
+                  )}
+                </>
               )}
 
               <div className="h-4" />

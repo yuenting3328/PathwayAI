@@ -167,7 +167,7 @@ export default function Candidates() {
                   <div className="flex flex-wrap gap-1.5">
                     {selected.graduate.skills.map(s => (
                       <span key={s.name} className="text-[12px] px-2.5 py-1 bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/20 rounded-full">
-                        {s.name} · {s.level}/10
+                        {s.name} · {s.level}/100
                       </span>
                     ))}
                   </div>

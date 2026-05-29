@@ -1,4 +1,4 @@
-import { Star, ChevronRight, Sparkles, MapPin, DollarSign, Building2, Filter, X } from 'lucide-react';
+import { Star, ChevronRight, Sparkles, MapPin, DollarSign, Building2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,7 +33,7 @@ export default function JobsDiscoveryScreen() {
     return () => window.removeEventListener('openJobFilters', handleOpenFilters);
   }, []);
 
-  const toggleSave = (jobId: string, e: MouseEvent) => {
+  const toggleSave = (jobId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSavedJobs(prev =>
       prev.includes(jobId) ? prev.filter(id => id !== jobId) : [...prev, jobId]
@@ -88,7 +88,7 @@ export default function JobsDiscoveryScreen() {
             <h3 className="text-white text-lg font-semibold">{t('Top Matches for You', '為你精選配對')}</h3>
           </div>
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {jobList.slice(0, 2).map((job, idx) => (
+            {jobList.filter(j => j.matchScore > 80).slice(0, 2).map((job, idx) => (
               <motion.div
                 key={job.id}
                 initial={{ opacity: 0, x: 20 }}

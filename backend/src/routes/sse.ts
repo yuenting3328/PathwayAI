@@ -51,8 +51,13 @@ export default async function sseRoutes(app: FastifyInstance) {
       }
     };
 
+    // User-specific listener — STAGE_CHANGE notifications for this student
+    const userChannel = `user:${userId}`;
+    const onUserEvent = (event: AppEvent) => sendEvent(event);
+
     if (instChannel) eventBus.on(instChannel, onInstEvent);
     eventBus.on('CREDENTIAL_ISSUED', onCredential);
+    eventBus.on(userChannel, onUserEvent);
 
     // Keep-alive ping every 25 seconds to prevent proxy timeouts
     const ping = setInterval(() => {
@@ -63,6 +68,7 @@ export default async function sseRoutes(app: FastifyInstance) {
       clearInterval(ping);
       if (instChannel) eventBus.off(instChannel, onInstEvent);
       eventBus.off('CREDENTIAL_ISSUED', onCredential);
+      eventBus.off(userChannel, onUserEvent);
       if (!pass.destroyed) pass.end();
     });
   });

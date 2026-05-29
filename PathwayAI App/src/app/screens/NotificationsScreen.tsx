@@ -1,9 +1,9 @@
-import { ArrowLeft, Bell, Briefcase, Award, Calendar, CheckCircle, TrendingUp } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ArrowLeft, Bell, Briefcase, Award, Calendar, TrendingUp } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { notifications as notifApi, type Notification } from '../lib/api';
+import { notifications as notifApi, type Notification, BASE_URL, getToken } from '../lib/api';
 
 function iconForType(type: string) {
   switch (type) {
@@ -40,8 +40,33 @@ export default function NotificationsScreen() {
   const [list, setList] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchNotifications = useCallback(() => {
     notifApi.list().then(setList).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // Subscribe to SSE for real-time push notifications
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    const sseUrl = `${BASE_URL}/events/stream?token=${encodeURIComponent(token)}`;
+    const es = new EventSource(sseUrl);
+
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        if (event.type === 'STAGE_CHANGE') {
+          // Refresh the full list to get the persisted notification with its id/applicationId
+          notifApi.list().then(setList).catch(console.error);
+        }
+      } catch {}
+    };
+
+    return () => es.close();
   }, []);
 
   const unreadCount = list.filter(n => !n.read).length;
@@ -49,6 +74,12 @@ export default function NotificationsScreen() {
   const handleMarkAllRead = async () => {
     await notifApi.markAllRead().catch(console.error);
     setList(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleTap = (n: Notification) => {
+    if (n.applicationId) {
+      navigate(`/applications/${n.applicationId}`, { state: { from: 'notification' } });
+    }
   };
 
   return (
@@ -91,6 +122,7 @@ export default function NotificationsScreen() {
         {!loading && list.map((n, idx) => {
           const Icon = iconForType(n.type);
           const c = colorForType(n.type);
+          const tappable = !!n.applicationId;
           return (
             <motion.div
               key={n.id}
@@ -98,7 +130,8 @@ export default function NotificationsScreen() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               whileHover={{ scale: 1.01, x: 4 }}
-              className={`bg-gradient-to-r ${c.card} backdrop-blur-sm rounded-2xl p-5 border shadow-lg cursor-pointer ${!n.read ? 'ring-1 ring-indigo-500/30' : ''}`}
+              onClick={() => handleTap(n)}
+              className={`bg-gradient-to-r ${c.card} backdrop-blur-sm rounded-2xl p-5 border shadow-lg ${tappable ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'} ${!n.read ? 'ring-1 ring-indigo-500/30' : ''}`}
             >
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 ${c.iconBg} backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>

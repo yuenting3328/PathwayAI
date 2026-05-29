@@ -74,8 +74,9 @@ export default async function jobRoutes(app: FastifyInstance) {
     const userSkills = await prisma.userSkill.findMany({ where: { userId: sub }, include: { skill: true } });
     const userSkillNames = new Set(userSkills.map((us) => us.skill.name.toLowerCase()));
     const have = job.skills.filter((s) => userSkillNames.has(s.toLowerCase())).length;
+    const matchScore = job.skills.length ? Math.round((have / job.skills.length) * 100) : 0;
 
-    return { ...job, saved: !!saved, skillsMatch: { have, total: job.skills.length } };
+    return { ...job, saved: !!saved, skillsMatch: { have, total: job.skills.length }, matchScore };
   });
 
   // POST /api/v1/jobs/:id/save — toggle saved

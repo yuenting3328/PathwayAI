@@ -405,5 +405,6 @@ export interface Notification {
   title: string;
   message: string;
   read: boolean;
+  applicationId?: string;
   createdAt: string;
 }

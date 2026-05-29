@@ -59,7 +59,6 @@ export default function InstitutionalAnalytics() {
 
   // Outcomes distribution — pivot snapshots by category
   const outcomesDistribution = (() => {
-    const years = snapshots.map(s => s.year.toString());
     return ['Employment', 'Further Study', 'Seeking', 'Other'].map(category => {
       const row: Record<string, string | number> = { category };
       snapshots.forEach(s => {
